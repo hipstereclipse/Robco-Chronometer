@@ -143,6 +143,11 @@ From a local clone or downloaded copy, open [`install.html`](install.html) in Ch
 select the mounted microSD card root, and let it install the files listed in
 `APPINFO/CLOCK.info` from the current `main` branch. Eject the device before unplugging it.
 
+The browser installer downloads from GitHub `main`, not from your local working tree. If your
+clone contains unpublished changes, push them first or use the manual install steps below;
+otherwise the device may receive an older all-in-one build that can hit
+`CALLBACK`/`LOW_MEMORY`/`MEMORY`.
+
 ### Manual install
 
 1. Connect the Pip‑Boy to your computer (USB / mass-storage, per The Wand Company's

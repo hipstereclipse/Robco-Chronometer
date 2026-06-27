@@ -409,6 +409,7 @@
         branch: "main"
       };
       var manifestPath = "APPINFO/CLOCK.info";
+      var minimumPayloadVersion = "0.5.0";
       var rawBase = "https://raw.githubusercontent.com/" +
         repo.owner + "/" + repo.name + "/" + repo.branch + "/";
       var cacheToken = "init-" + Date.now();
@@ -452,7 +453,7 @@
       var progressBar = document.getElementById("progressBar");
       var payloadList = document.getElementById("payloadList");
 
-      sourceLabel.textContent = repo.owner + "/" + repo.name + "@" + repo.branch;
+      sourceLabel.textContent = repo.owner + "/" + repo.name + "@" + repo.branch + " (v" + minimumPayloadVersion + "+)";
 
       function setStatus(text) {
         statusPill.textContent = text;
@@ -480,6 +481,27 @@
 
       function updateCacheToken(seed) {
         cacheToken = encodeURIComponent(String(seed || "latest") + "-" + Date.now());
+      }
+
+      function compareVersions(a, b) {
+        var left = String(a || "0").split(".");
+        var right = String(b || "0").split(".");
+        var max = Math.max(left.length, right.length);
+        for (var i = 0; i < max; i += 1) {
+          var x = parseInt(left[i] || "0", 10) || 0;
+          var y = parseInt(right[i] || "0", 10) || 0;
+          if (x !== y) return x > y ? 1 : -1;
+        }
+        return 0;
+      }
+
+      function validatePayloadVersion(manifest) {
+        if (compareVersions(manifest && manifest.version, minimumPayloadVersion) >= 0) return;
+        throw new Error(
+          "GitHub payload is v" + (manifest && manifest.version ? manifest.version : "unknown") +
+          ", but this installer requires v" + minimumPayloadVersion +
+          "+. Push the split-app payload to GitHub or manually copy the local files before installing."
+        );
       }
 
       function showNotice(message) {
@@ -551,6 +573,7 @@
         }
         var text = await response.text();
         var manifest = JSON.parse(text);
+        validatePayloadVersion(manifest);
         var files = splitManifestFiles(manifest);
         updatePayloadVersion(manifest);
         updateCacheToken(manifest.version);
@@ -590,14 +613,36 @@
         return current;
       }
 
-      async function writeFile(root, path, blob) {
-        var parts = path.split("/");
-        var filename = parts.pop();
-        var directory = await ensureDirectory(root, parts);
+      function isRecoverableFileError(error) {
+        var name = error && error.name;
+        var message = String(error && error.message ? error.message : "").toLowerCase();
+        return name === "NotReadableError" ||
+          name === "InvalidStateError" ||
+          message.indexOf("requested file could not be read") !== -1;
+      }
+
+      async function writeBlob(directory, filename, blob) {
         var file = await directory.getFileHandle(filename, { create: true });
         var writable = await file.createWritable();
         await writable.write(blob);
         await writable.close();
+      }
+
+      async function writeFile(root, path, blob) {
+        var parts = path.split("/");
+        var filename = parts.pop();
+        var directory = await ensureDirectory(root, parts);
+        try {
+          await writeBlob(directory, filename, blob);
+        } catch (error) {
+          if (!isRecoverableFileError(error)) throw error;
+          try {
+            await directory.removeEntry(filename);
+          } catch (removeError) {
+            if (!removeError || removeError.name !== "NotFoundError") throw error;
+          }
+          await writeBlob(directory, filename, blob);
+        }
       }
 
       async function openDirectory(root, parts) {
@@ -633,6 +678,20 @@
         if (paths.indexOf(path) === -1) paths.push(path);
       }
 
+      async function ensureReadWritePermission(handle) {
+        if (!handle || !handle.queryPermission) return;
+        var options = { mode: "readwrite" };
+        var state = await handle.queryPermission(options);
+        if (state === "granted") return;
+        if (!handle.requestPermission) {
+          throw new Error("Write permission was not granted for the selected folder.");
+        }
+        state = await handle.requestPermission(options);
+        if (state !== "granted") {
+          throw new Error("Write permission was not granted for the selected folder.");
+        }
+      }
+
       function manifestLooksRelated(text) {
         var lower = String(text || "").toLowerCase();
         return lower.indexOf("clocksuite") !== -1 ||
@@ -664,20 +723,24 @@
           return paths;
         }
         if (!appInfo.values) return paths;
-        for await (var handle of appInfo.values()) {
-          if (handle.kind !== "file" || !/\.info$/i.test(handle.name)) continue;
-          try {
-            var text = await (await handle.getFile()).text();
-            if (!manifestLooksRelated(text)) continue;
-            addUniquePath(paths, "APPINFO/" + handle.name);
+        try {
+          for await (var handle of appInfo.values()) {
+            if (handle.kind !== "file" || !/\.info$/i.test(handle.name)) continue;
             try {
-              addManifestFileList(paths, JSON.parse(text));
-            } catch (parseError) {
-              // Text match is enough to remove the manifest; malformed file lists are ignored.
+              var text = await (await handle.getFile()).text();
+              if (!manifestLooksRelated(text)) continue;
+              addUniquePath(paths, "APPINFO/" + handle.name);
+              try {
+                addManifestFileList(paths, JSON.parse(text));
+              } catch (parseError) {
+                // Text match is enough to remove the manifest; malformed file lists are ignored.
+              }
+            } catch (readError) {
+              // Unreadable manifests are left alone.
             }
-          } catch (readError) {
-            // Unreadable manifests are left alone.
           }
+        } catch (scanError) {
+          log("Skipped full APPINFO scan because the selected storage blocked reading an existing file.");
         }
         return paths;
       }
@@ -741,6 +804,7 @@
 
         try {
           var directory = await chooseDirectory();
+          await ensureReadWritePermission(directory);
           targetLabel.textContent = directory.name || "Selected folder";
           setStatus("Fetch");
           log("Target: " + targetLabel.textContent);
