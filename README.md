@@ -132,12 +132,21 @@ A few pieces are worth calling out:
 | [`APPS/CLOCKSUITE.JS`](APPS/CLOCKSUITE.JS) | The application (everything runs from here). |
 | [`APPINFO/CLOCK.info`](APPINFO/CLOCK.info) | App-loader manifest (id, name, version, entry point, icon). |
 | [`APPINFO/HOLO.IMG`](APPINFO/HOLO.IMG) | App-loader icon referenced by the manifest. |
+| [`install.html`](install.html) | Browser-based installer that downloads the current GitHub payload and writes it to a selected microSD card. |
 | [`tools/render-clock-suite-previews.ps1`](tools/render-clock-suite-previews.ps1) | PowerShell script that renders the preview PNGs. |
 | [`PREVIEWS/`](PREVIEWS/) | Generated screenshots used in this README. |
 
 ---
 
 ## Installing on a Pip‑Boy
+
+### Browser installer
+
+From a local clone or downloaded copy, open [`install.html`](install.html) in Chrome or Edge,
+select the mounted microSD card root, and let it install the files listed in
+`APPINFO/CLOCK.info` from the current `main` branch. Eject the device before unplugging it.
+
+### Manual install
 
 1. Connect the Pip‑Boy to your computer (USB / mass-storage, per The Wand Company's
    instructions) so its filesystem is mounted.

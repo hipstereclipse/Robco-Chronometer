@@ -27,45 +27,32 @@
     { name: "AUCKLAND", std: 720, rule: "nz", abbr: "NZST", dst: "NZDT", lon: 175, lat: -37 }
   ];
 
-  // Low-poly coastline traces tuned for the 104 px globe. They retain the
-  // recognizable continental silhouettes without overloading the redraw loop.
-  var landShapes = [
-    // North America, including Alaska, Canada, the U.S., Mexico, and Central America.
-    [-168,72,-158,71,-151,67,-143,69,-136,59,-130,55,-127,50,-124,49,-124,43,-121,38,-117,33,-112,29,-106,23,-98,19,-91,18,-88,21,-84,22,-81,25,-80,29,-81,31,-79,33,-76,36,-75,39,-71,42,-67,45,-61,46,-57,50,-60,54,-67,56,-76,57,-82,62,-91,63,-96,68,-109,69,-121,71,-134,70,-145,72,-158,74,-168,72],
-    // Hudson Bay.
-    [-95,59,-88,58,-82,55,-78,51,-83,49,-90,52,-95,59],
-    // Greenland.
-    [-53,83,-37,83,-23,79,-17,72,-23,66,-36,60,-49,59,-58,64,-63,71,-60,78,-53,83],
-    // South America.
-    [-81,12,-75,11,-69,9,-63,3,-59,-4,-54,-9,-50,-18,-44,-23,-41,-33,-46,-39,-50,-50,-58,-55,-65,-54,-70,-49,-73,-42,-76,-32,-78,-20,-81,-7,-81,4,-81,12],
-    // Europe.
-    [-10,36,-9,43,-5,50,0,51,4,58,12,56,18,60,25,66,32,70,40,68,33,60,39,55,31,50,23,46,17,43,12,45,5,43,0,38,-6,36,-10,36],
-    // Asia.
-    [28,41,36,38,44,36,51,31,60,29,67,25,76,31,85,28,94,23,100,13,106,22,116,22,122,30,132,31,139,35,145,42,155,44,166,51,159,59,143,62,128,70,105,72,82,72,63,67,52,62,43,56,33,57,28,50,28,41],
-    // Africa.
-    [-17,35,-6,36,5,36,16,33,25,31,32,25,35,19,43,12,51,4,49,-5,43,-12,40,-22,33,-31,25,-34,18,-35,11,-31,5,-22,-3,-11,-10,2,-16,14,-17,25,-17,35],
-    // Arabia.
-    [34,29,43,29,51,25,58,17,55,13,47,12,42,16,38,24,34,29],
-    // India.
-    [68,24,73,19,78,8,82,7,88,21,80,27,73,26,68,24],
-    // Mainland Southeast Asia.
-    [93,22,101,20,108,16,109,10,105,6,99,9,96,15,93,22],
-    // Indonesia and Papua.
-    [95,6,105,4,117,1,126,-3,132,-5,124,-8,112,-5,104,-6,97,0,95,6],
-    [132,-2,142,-4,153,-5,150,-10,139,-9,132,-2],
-    // Australia.
-    [112,-11,116,-21,114,-29,121,-35,134,-39,146,-43,153,-37,153,-28,147,-20,138,-15,128,-13,119,-14,112,-11],
-    // Madagascar.
-    [48,-12,51,-20,49,-26,44,-25,43,-18,48,-12],
-    // British Isles, Iceland, Japan, New Zealand, and Tasmania.
-    [-8,58,-3,56,-2,51,-5,50,-8,52,-8,58],
-    [-25,66,-14,65,-14,63,-24,63,-25,66],
-    [130,34,135,32,141,36,145,43,140,45,133,40,130,34],
-    [166,-35,178,-38,177,-45,169,-47,166,-42,166,-35],
-    [145,-40,149,-43,146,-45,143,-43,145,-40],
-    // Antarctica.
-    [-180,-68,-160,-71,-135,-70,-110,-73,-80,-71,-55,-74,-25,-71,0,-70,32,-73,62,-70,95,-72,130,-69,160,-72,180,-68]
-  ];
+  // Byte-packed coastline traces for the 104 px globe. 0xff starts a shape
+  // with absolute lon/lat, following pairs are signed deltas biased by 128.
+  var landData =
+    "\xFF\x00\x0C\xA2\x8A\x7F\x87\x7C\x88\x82\x87\x76\x86\x7C\x83\x7B\x83\x7F\x80\x7A\x83\x7B\x84\x7B" +
+    "\x85\x7C\x86\x7A\x88\x7C\x87\x7F\x83\x83\x84\x81\x83\x83\x81\x84\x7F\x82\x82\x82\x83\x83\x81\x83" +
+    "\x84\x83\x84\x83\x86\x81\x84\x84\x7D\x84\x79\x82\x77\x81\x7A\x85\x77\x81\x7B\x85\x73\x81\x74\x82" +
+    "\x73\x7F\x75\x82\x73\x82\x76\x7E\xFF\x00\x55\x95\x87\x7F\x86\x7D\x84\x7C\x7B\x7E\x79\x83\x7B\x87" +
+    "\xFF\x00\x7F\xAD\x90\x80\x8E\x7C\x86\x79\x7A\x7A\x73\x7A\x73\x7F\x77\x85\x7B\x87\x83\x87\x87\x85" +
+    "\xFF\x00\x63\x66\x86\x7F\x86\x7E\x86\x7A\x84\x79\x85\x7B\x84\x77\x86\x7B\x83\x76\x7B\x7A\x7C\x75" +
+    "\x78\x7B\x79\x81\x7B\x85\x7D\x87\x7D\x8A\x7E\x8C\x7D\x8D\x80\x8B\x80\x88\xFF\x00\xAA\x7E\x81\x87" +
+    "\x84\x87\x85\x81\x84\x87\x88\x7E\x86\x84\x87\x86\x87\x84\x88\x7E\x79\x78\x86\x7B\x78\x7B\x78\x7C" +
+    "\x7A\x7D\x7B\x82\x79\x7E\x7B\x7B\x7A\x7E\x7C\x80\xFF\x00\xD0\x83\x88\x7D\x88\x7E\x87\x7B\x89\x7E" +
+    "\x87\x7C\x89\x86\x89\x7D\x89\x7B\x86\x76\x86\x89\x8A\x80\x86\x88\x8A\x81\x87\x84\x86\x87\x8A\x82" +
+    "\x8B\x87\x79\x88\x70\x83\x71\x88\x69\x82\x69\x80\x6D\x7B\x75\x7B\x77\x7A\x76\x81\x7B\x79\x80\x77" +
+    "\xFF\x00\xA3\x7D\x8B\x81\x8B\x80\x8B\x7D\x89\x7E\x87\x7A\x83\x7A\x88\x79\x88\x78\x7E\x77\x7A\x79" +
+    "\x7D\x76\x79\x77\x78\x7D\x79\x7F\x79\x84\x7A\x89\x78\x8B\x79\x8D\x7A\x8C\x7F\x8B\x80\x8A\xFF\x00" +
+    "\xD6\x77\x89\x80\x88\x7C\x87\x78\x7D\x7C\x78\x7F\x7B\x84\x7C\x88\x7C\x85\xFF\x00\xF8\x72\x85\x7B" +
+    "\x85\x75\x84\x7F\x86\x8E\x78\x86\x79\x7F\x7B\x7E\xFF\x01\x11\x70\x88\x7E\x87\x7C\x81\x7A\x7C\x7C" +
+    "\x7A\x83\x7D\x86\x7D\x87\xFF\x01\x13\x60\x8A\x7E\x8C\x7D\x89\x7C\x86\x7E\x78\x7D\x74\x83\x78\x7F" +
+    "\x79\x86\x7E\x86\xFF\x01\x38\x58\x8A\x7E\x8B\x7F\x7D\x7B\x75\x81\x79\x87\xFF\x01\x24\x4F\x84\x76" +
+    "\x7E\x78\x87\x7A\x8D\x7C\x8C\x7C\x87\x86\x80\x89\x7A\x88\x77\x85\x76\x82\x77\x7F\x79\x83\xFF\x00" +
+    "\xE4\x4E\x83\x78\x7E\x7A\x7B\x81\x7F\x87\x85\x86\xFF\x00\xAC\x94\x85\x7E\x81\x7B\x7D\x7F\x7D\x82" +
+    "\x80\x86\xFF\x00\x9B\x9C\x8B\x7F\x80\x7E\x76\x80\x7F\x83\xFF\x01\x36\x7C\x85\x7E\x86\x84\x84\x87" +
+    "\x7B\x82\x79\x7B\x7D\x7A\xFF\x01\x5A\x37\x8C\x7D\x7F\x79\x78\x7E\x7D\x85\x80\x87\xFF\x01\x45\x32" +
+    "\x84\x7D\x7D\x7E\x7D\x82\x82\x83\xFF\x00\x00\x16\x94\x7D\x99\x81\x99\x7D\x9E\x82\x99\x7D\x9E\x83" +
+    "\x99\x81\xA0\x7D\x9E\x83\xA1\x7E\xA3\x83\x9E\x7D\x94\x84";
 
   var stopwatchRunning = false;
   var stopwatchStart = 0;
@@ -239,18 +226,6 @@
     return dayNames[d.getDay()] + " " + d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
   }
 
-  function formatDateUtc(d) {
-    return dayNames[d.getUTCDay()] + " " + d.getUTCFullYear() + "-" + pad2(d.getUTCMonth() + 1) + "-" + pad2(d.getUTCDate());
-  }
-
-  function formatLongDateLocal(d) {
-    return fullDayNames[d.getDay()] + ", " + monthNames[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear();
-  }
-
-  function formatLongDateUtc(d) {
-    return fullDayNames[d.getUTCDay()] + ", " + monthNames[d.getUTCMonth()] + " " + d.getUTCDate() + ", " + d.getUTCFullYear();
-  }
-
   function wrapLon(lon) {
     lon = ((lon + 180) % 360 + 360) % 360 - 180;
     return lon;
@@ -333,15 +308,15 @@
     setMono().setFontAlign(1, -1).drawString(right, w - 8, y);
   }
 
-  function drawStatusRail(x, y, title, rows) {
+  function drawClockStatusRail(x, y) {
     var rw = width() - x - 12;
-    var i;
     screen.setColor(1);
     drawBox(x, y, rw, 154);
-    setMono().setFontAlign(0, -1).drawString(title, x + (rw / 2), y + 8);
-    for (i = 0; i < rows.length; i++) {
-      setMono().setFontAlign(-1, -1).drawString(rows[i], x + 10, y + 38 + (i * 24));
-    }
+    setMono().setFontAlign(0, -1).drawString("DISPLAY", x + (rw / 2), y + 8);
+    setMono().setFontAlign(-1, -1).drawString("LAYOUT " + layoutNames[clockLayout], x + 10, y + 38);
+    setMono().setFontAlign(-1, -1).drawString("SECS " + (showSeconds ? "ON" : "OFF"), x + 10, y + 62);
+    setMono().setFontAlign(-1, -1).drawString("FMT " + (hour24 ? "24H" : "12H"), x + 10, y + 86);
+    setMono().setFontAlign(-1, -1).drawString("ROBCO UI", x + 10, y + 110);
   }
 
   function drawClock() {
@@ -366,12 +341,7 @@
       if (clockLayout >= 3) {
         setMono().setFontAlign(0, -1).drawString("VAULT STATUS: NOMINAL", 172, 236);
       }
-      drawStatusRail(326, 78, "DISPLAY", [
-        "LAYOUT " + layoutNames[clockLayout],
-        "SECS " + (showSeconds ? "ON" : "OFF"),
-        "FMT " + (hour24 ? "24H" : "12H"),
-        "ROBCO UI"
-      ]);
+      drawClockStatusRail(326, 78);
     }
 
     drawFooter("K1 LAYOUT/SEC", "K2 12H/MODE");
@@ -412,46 +382,44 @@
   }
 
   // Oblique orthographic projection: viewpoint over (centerLat, centerLon).
-  // Returns screen point, or undefined if the point is on the far hemisphere.
+  // Writes the screen point into the pjx/pjy scratch vars and returns true, or
+  // returns false if the point is on the far hemisphere. Returning into scratch
+  // rather than a fresh {x,y} object keeps the globe redraw from churning ~1000
+  // short-lived objects per frame, which was exhausting the JSVar pool
+  // (LOW_MEMORY/MEMORY) and killing the redraw timer (CALLBACK).
+  var pjx = 0, pjy = 0;
   function geoProject(cx, cy, r, centerLat, centerLon, lon, lat) {
     var dlon = wrapLon(lon - centerLon) * Math.PI / 180;
     var phi = lat * Math.PI / 180;
     var p0 = centerLat * Math.PI / 180;
     var cosc = Math.sin(p0) * Math.sin(phi) + Math.cos(p0) * Math.cos(phi) * Math.cos(dlon);
-    if (cosc < 0) return undefined;
-    return {
-      x: cx + (r * Math.cos(phi) * Math.sin(dlon)),
-      y: cy - (r * ((Math.cos(p0) * Math.sin(phi)) - (Math.sin(p0) * Math.cos(phi) * Math.cos(dlon))))
-    };
-  }
-
-  function drawGeoPath(cx, cy, r, centerLat, centerLon, pts) {
-    var i;
-    var last;
-    for (i = 0; i < pts.length; i += 2) {
-      var p = geoProject(cx, cy, r, centerLat, centerLon, pts[i], pts[i + 1]);
-      if (p && last) line(last.x, last.y, p.x, p.y);
-      last = p;
-    }
+    if (cosc < 0) return false;
+    pjx = cx + (r * Math.cos(phi) * Math.sin(dlon));
+    pjy = cy - (r * ((Math.cos(p0) * Math.sin(phi)) - (Math.sin(p0) * Math.cos(phi) * Math.cos(dlon))));
+    return true;
   }
 
   function drawMeridian(cx, cy, r, centerLat, centerLon, lon) {
-    var lat;
-    var last;
+    var lat, haveLast = false, lx = 0, ly = 0;
     for (lat = -90; lat <= 90; lat += 6) {
-      var p = geoProject(cx, cy, r, centerLat, centerLon, lon, lat);
-      if (p && last) line(last.x, last.y, p.x, p.y);
-      last = p;
+      if (geoProject(cx, cy, r, centerLat, centerLon, lon, lat)) {
+        if (haveLast) line(lx, ly, pjx, pjy);
+        lx = pjx; ly = pjy; haveLast = true;
+      } else {
+        haveLast = false;
+      }
     }
   }
 
   function drawParallel(cx, cy, r, centerLat, centerLon, lat) {
-    var lon;
-    var last;
+    var lon, haveLast = false, lx = 0, ly = 0;
     for (lon = centerLon - 180; lon <= centerLon + 180; lon += 6) {
-      var p = geoProject(cx, cy, r, centerLat, centerLon, lon, lat);
-      if (p && last) line(last.x, last.y, p.x, p.y);
-      last = p;
+      if (geoProject(cx, cy, r, centerLat, centerLon, lon, lat)) {
+        if (haveLast) line(lx, ly, pjx, pjy);
+        lx = pjx; ly = pjy; haveLast = true;
+      } else {
+        haveLast = false;
+      }
     }
   }
 
@@ -473,26 +441,33 @@
   // current globe centre: x = east (screen +x), y = north (screen up),
   // z = depth toward the viewer. A surface point's solar elevation sine is
   // simply the dot of its view-space unit vector with this.
-  function subSolarVector(centerLat, centerLon, utc) {
+  var sunX = 0, sunY = 0, sunZ = 0;
+  function setSubSolarVector(centerLat, centerLon, utc) {
     var dec = solarDeclination(utc);
     var dl = wrapLon(subSolarLon(utc) - centerLon) * Math.PI / 180;
     var p0 = centerLat * Math.PI / 180;
-    return {
-      x: Math.cos(dec) * Math.sin(dl),
-      y: (Math.cos(p0) * Math.sin(dec)) - (Math.sin(p0) * Math.cos(dec) * Math.cos(dl)),
-      z: (Math.sin(p0) * Math.sin(dec)) + (Math.cos(p0) * Math.cos(dec) * Math.cos(dl))
-    };
+    sunX = Math.cos(dec) * Math.sin(dl);
+    sunY = (Math.cos(p0) * Math.sin(dec)) - (Math.sin(p0) * Math.cos(dec) * Math.cos(dl));
+    sunZ = (Math.sin(p0) * Math.sin(dec)) + (Math.cos(p0) * Math.cos(dec) * Math.cos(dl));
   }
 
-  // Along the disc line where the fixed in-plane coordinate is "av", returns the
-  // intervals of the free coordinate where the solar elevation sine is at or below
-  // t. pa/pb are the sun's components on the fixed/free axes, pd on the depth axis.
-  // Exact: solves the terminator conic, then classifies each sub-interval by the
-  // true value at its midpoint (so spurious roots from squaring are harmless).
-  function darkSpan(av, pa, pb, pd, t) {
+  // Module-level scratch for drawDarkSpan: a hoisted comparator and a reused
+  // bounds buffer, so the per-row night shading allocates nothing per frame.
+  function ascending(p, q) { return p - q; }
+  var dsBounds = [];
+
+  // Draws the night-side span(s) for one disc row (fixed in-plane coord av = yv/r)
+  // directly: the intervals of the free coordinate where the solar elevation sine
+  // is at or below t. pa/pb are the sun's components on the fixed/free axes, pd on
+  // the depth axis. Exact: solves the terminator conic, then classifies each
+  // sub-interval by the true value at its midpoint (so spurious roots from
+  // squaring are harmless).
+  function drawDarkSpan(cx, cy, r, yv, pa, pb, pd, t) {
+    var av = yv / r;
     var bmax = Math.sqrt(Math.max(0, 1 - (av * av)));
-    if (bmax <= 0) return [];
-    var bounds = [-bmax, bmax];
+    if (bmax <= 0) return;
+    dsBounds.length = 0;
+    dsBounds.push(-bmax, bmax);
     var a = (pb * pb) + (pd * pd);
     if (a > 1e-9) {
       var k = t - (av * pa);
@@ -505,71 +480,67 @@
       var sq = Math.sqrt(Math.max(0, (b * b) - (4 * a * c)));
       var b1 = (-b - sq) / (2 * a);
       var b2 = (-b + sq) / (2 * a);
-      if (b1 > -bmax && b1 < bmax) bounds.push(b1);
-      if (b2 > -bmax && b2 < bmax) bounds.push(b2);
+      if (b1 > -bmax && b1 < bmax) dsBounds.push(b1);
+      if (b2 > -bmax && b2 < bmax) dsBounds.push(b2);
     }
-    bounds.sort(function(p, q) { return p - q; });
-    var segs = [];
+    dsBounds.sort(ascending);
     var i;
-    for (i = 0; i < bounds.length - 1; i++) {
-      var lo = bounds[i];
-      var hi = bounds[i + 1];
+    for (i = 0; i < dsBounds.length - 1; i++) {
+      var lo = dsBounds[i];
+      var hi = dsBounds[i + 1];
       if (hi - lo < 1e-4) continue;
       var mid = (lo + hi) / 2;
       var w = Math.sqrt(Math.max(0, 1 - (av * av) - (mid * mid)));
-      if (((av * pa) + (mid * pb) + (w * pd)) <= t) segs.push([lo, hi]);
+      if (((av * pa) + (mid * pb) + (w * pd)) <= t) line(cx + (lo * r), cy - yv, cx + (hi * r), cy - yv);
     }
-    return segs;
   }
 
   // Dim scanline wash over the night hemisphere. The terminator curves and tilts
   // with the season because it is derived from the true sub-solar direction rather
   // than a meridian. Horizontal rows keep it distinct from the vertical graticule.
-  function drawGlobeShade(cx, cy, r, s) {
+  function drawGlobeShade(cx, cy, r) {
     var yv;
-    var i;
     screen.setColor(1);
     for (yv = -r + 1; yv < r; yv += 2) {
-      var segs = darkSpan(yv / r, s.y, s.x, s.z, 0);
-      for (i = 0; i < segs.length; i++) {
-        line(cx + (segs[i][0] * r), cy - yv, cx + (segs[i][1] * r), cy - yv);
-      }
+      drawDarkSpan(cx, cy, r, yv, sunY, sunX, sunZ, 0);
     }
   }
 
   // The day/night boundary is the great circle whose pole is the sub-solar point:
   // trace it directly in view space and draw the near-side arc.
-  function drawTerminator(cx, cy, r, s) {
-    var ax = -s.z;
+  function drawTerminator(cx, cy, r) {
+    var ax = -sunZ;
     var ay = 0;
-    var az = s.x;
+    var az = sunX;
     var m = Math.sqrt((ax * ax) + (az * az));
     if (m < 1e-6) { ax = 1; ay = 0; az = 0; m = 1; }
     ax /= m; az /= m;
-    var bx = (s.y * az) - (s.z * ay);
-    var by = (s.z * ax) - (s.x * az);
-    var bz = (s.x * ay) - (s.y * ax);
-    var last;
+    var bx = (sunY * az) - (sunZ * ay);
+    var by = (sunZ * ax) - (sunX * az);
+    var bz = (sunX * ay) - (sunY * ax);
+    var haveLast = false, lx = 0, ly = 0;
     var th;
     screen.setColor(3);
     for (th = 0; th <= 360; th += 6) {
       var c = Math.cos(th * Math.PI / 180);
       var sn = Math.sin(th * Math.PI / 180);
       var pz = (az * c) + (bz * sn);
-      var p = pz < 0 ? undefined : {
-        x: cx + (((ax * c) + (bx * sn)) * r),
-        y: cy - (((ay * c) + (by * sn)) * r)
-      };
-      if (p && last) line(last.x, last.y, p.x, p.y);
-      last = p;
+      if (pz < 0) {
+        haveLast = false;
+      } else {
+        var px = cx + (((ax * c) + (bx * sn)) * r);
+        var py = cy - (((ay * c) + (by * sn)) * r);
+        if (haveLast) line(lx, ly, px, py);
+        lx = px; ly = py; haveLast = true;
+      }
     }
   }
 
   // Sub-solar point ("high noon" / sun directly overhead) when on the near side.
-  function drawSunMarker(cx, cy, r, s) {
-    if (s.z <= 0) return;
-    var mx = cx + (s.x * r);
-    var my = cy - (s.y * r);
+  function drawSunMarker(cx, cy, r) {
+    if (sunZ <= 0) return;
+    var mx = cx + (sunX * r);
+    var my = cy - (sunY * r);
     var i;
     screen.setColor(3);
     screen.drawCircle(mx, my, 2);
@@ -611,10 +582,25 @@
   }
 
   function drawGlobeLand(cx, cy, r, centerLat, centerLon) {
-    var i;
+    var i = 0, b, lon = 0, lat = 0, fresh = true, haveLast = false, lx = 0, ly = 0;
     screen.setColor(3);
-    for (i = 0; i < landShapes.length; i++) {
-      drawGeoPath(cx, cy, r, centerLat, centerLon, landShapes[i]);
+    while (i < landData.length) {
+      b = landData.charCodeAt(i++);
+      if (b === 255) {
+        lon = ((landData.charCodeAt(i++) << 8) + landData.charCodeAt(i++)) - 180;
+        lat = landData.charCodeAt(i++) - 90;
+        fresh = true;
+      } else {
+        lon += b - 128;
+        lat += landData.charCodeAt(i++) - 128;
+      }
+      if (geoProject(cx, cy, r, centerLat, centerLon, lon, lat)) {
+        if (haveLast && !fresh) line(lx, ly, pjx, pjy);
+        lx = pjx; ly = pjy; haveLast = true;
+      } else {
+        haveLast = false;
+      }
+      fresh = false;
     }
   }
 
@@ -627,19 +613,19 @@
     var r = 104;
     var centerLon = zone.lon || 0;
     var centerLat = zone.lat || 0;
-    var sun = subSolarVector(centerLat, centerLon, utc);
+    setSubSolarVector(centerLat, centerLon, utc);
     // Selected location sits at the disc centre, so its solar elevation is the
     // viewer-facing component of the sub-solar vector.
-    var elev = Math.asin(Math.max(-1, Math.min(1, sun.z))) * 180 / Math.PI;
+    var elev = Math.asin(Math.max(-1, Math.min(1, sunZ))) * 180 / Math.PI;
     var phase = elev >= 0 ? "DAYLIGHT" : (elev >= -12 ? "TWILIGHT" : "NIGHT");
 
     drawHeader();
-    drawGlobeShade(cx, cy, r, sun);
+    drawGlobeShade(cx, cy, r);
     drawGlobeGrid(cx, cy, r, centerLat, centerLon);
     drawTimezoneBand(cx, cy, r, centerLat, centerLon, zoneOffset(zone, utc));
     drawGlobeLand(cx, cy, r, centerLat, centerLon);
-    drawTerminator(cx, cy, r, sun);
-    drawSunMarker(cx, cy, r, sun);
+    drawTerminator(cx, cy, r);
+    drawSunMarker(cx, cy, r);
     drawHomeMarker(cx, cy);
 
     screen.setColor(3);
@@ -648,7 +634,7 @@
     drawBox(272, 96, 158, 184);
     setMono().setFontAlign(0, -1).drawString(zone.name + " " + zoneAbbr(zone, utc), 351, 112);
     setVector(30).setFontAlign(0, 0).drawString(formatUtcTime(zd, false), 351, 154);
-    setMono().setFontAlign(0, -1).drawString(formatLongDateUtc(zd).split(", ")[0], 351, 188);
+    setMono().setFontAlign(0, -1).drawString(fullDayNames[zd.getUTCDay()], 351, 188);
     setMono().setFontAlign(0, -1).drawString(monthNames[zd.getUTCMonth()] + " " + zd.getUTCDate() + ", " + zd.getUTCFullYear(), 351, 212);
     setMono().setFontAlign(0, -1).drawString("FIX " + formatFix(centerLat, centerLon), 351, 236);
     screen.setColor(elev >= 0 ? 3 : 1);
@@ -966,9 +952,15 @@
   }
 
   function tick() {
-    updateCountdown();
-    updatePomo();
-    draw();
+    // Guard the interval body: if a single redraw ever throws (e.g. a transient
+    // allocation failure), swallow it so Espruino doesn't drop the timer and
+    // freeze the clock -- the next tick simply tries again.
+    try {
+      updateCountdown();
+      updatePomo();
+      draw();
+    } catch (e) {
+    }
   }
 
   loadSettings();
