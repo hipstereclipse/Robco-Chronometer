@@ -131,6 +131,7 @@ A few pieces are worth calling out:
 |------|---------|
 | [`APPS/CLOCKSUITE.JS`](APPS/CLOCKSUITE.JS) | The application (everything runs from here). |
 | [`APPINFO/CLOCK.info`](APPINFO/CLOCK.info) | App-loader manifest (id, name, version, entry point, icon). |
+| [`APPINFO/HOLO.IMG`](APPINFO/HOLO.IMG) | App-loader icon referenced by the manifest. |
 | [`tools/render-clock-suite-previews.ps1`](tools/render-clock-suite-previews.ps1) | PowerShell script that renders the preview PNGs. |
 | [`PREVIEWS/`](PREVIEWS/) | Generated screenshots used in this README. |
 
@@ -143,7 +144,7 @@ A few pieces are worth calling out:
 2. Copy the app onto the device, preserving the folder layout:
    - `APPS/CLOCKSUITE.JS`
    - `APPINFO/CLOCK.info`
-   - `APPINFO/HOLO.IMG` *(an icon image referenced by the manifest — supply your own if not present)*
+   - `APPINFO/HOLO.IMG`
 3. Eject the device and reboot it. **Clock Suite** appears in the app menu; launch it and rotate
    **Knob 2** to move between the seven modes.
 
