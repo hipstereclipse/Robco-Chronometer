@@ -1,0 +1,8 @@
+{
+  "id": "clocksuite",
+  "name": "Clock Suite",
+  "version": "0.4.0",
+  "files": "APPINFO/CLOCK.info,APPS/CLOCKSUITE.JS",
+  "src": "APPS/CLOCKSUITE.JS",
+  "icon": "APPINFO/HOLO.IMG"
+}

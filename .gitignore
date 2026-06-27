@@ -1,0 +1,7 @@
+# Runtime settings written on-device
+USER/
+*.SET
+
+# OS / editor cruft
+Thumbs.db
+.DS_Store
