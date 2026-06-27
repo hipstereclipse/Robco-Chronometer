@@ -1,18 +1,18 @@
 # RobCo Chronometer (Clock Suite)
 
-A full-screen timekeeping suite for the [Wand Company Pip‑Boy](https://thewandcompany.com/pip-boy/)
-(an Espruino-based device). Seven modes — a configurable digital clock, a world-clock relay,
-a live day/night **globe**, an analog face, a stopwatch, a countdown, and a Pomodoro timer —
-all rendered in the Pip‑Boy's 3-level green phosphor aesthetic and driven entirely by the
-two physical knobs.
+A set of lightweight full-screen timekeeping apps for the [Wand Company Pip‑Boy](https://thewandcompany.com/pip-boy/)
+(an Espruino-based device). The suite installs as seven separate menu entries: a configurable
+digital clock, a world-clock relay, a live day/night **globe**, an analog face, a stopwatch,
+a countdown, and a Pomodoro timer. Each app has its own holotape icon and only loads the code
+it needs, which keeps memory use low on-device.
 
 Everything runs on-device in plain ES5 JavaScript with no network access. Time zones, daylight
 saving, and the sun's position are all computed locally from the device clock.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  CLOCK → WORLD → GLOBE → ANALOG → STOPWATCH → COUNTDOWN →  │
-│  POMODORO  (rotate with Knob 2)                            │
+│  CLOCK  WORLD  GLOBE  ANALOG  STOPWATCH  COUNTDOWN         │
+│  POMODORO  (separate Pip-Boy app entries)                  │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -40,11 +40,10 @@ selected zone's UTC offset and DST state.
 ![World clock relay with DST](PREVIEWS/03-world-dst-relay.png)
 
 ### Globe
-An orthographic globe centered on the selected city, with coastlines, a lat/long graticule,
-the city's time-zone band, and a **live day/night terminator** computed from the real solar
-position. The night hemisphere is washed with scanlines, the sub-solar point ("high noon") is
-marked, and the side panel reports the selected location's local time plus its solar phase
-(`DAYLIGHT` / `TWILIGHT` / `NIGHT`) and the sun's elevation angle.
+An orthographic globe centered on the selected city, with a lat/long graticule, the city's
+time-zone meridian, and a **live day/night terminator** computed from the real solar position.
+The sub-solar point ("high noon") is marked when visible, and the side panel reports the selected
+location's local time plus its solar phase (`DAYLIGHT` / `TWILIGHT` / `NIGHT`) and sun elevation.
 
 ![Globe with orbital relay panel](PREVIEWS/04-globe-orbital-relay.png)
 
@@ -75,15 +74,15 @@ are counted, and the timer auto-advances between phases with an audible cue.
 
 ## Controls
 
-The whole suite is driven by the two knobs. **Knob 2 is the universal mode dial** — turn it to
-cycle through the seven modes. Knob 1 (and a Knob‑2 press) are context-sensitive:
+Each tool launches as its own Pip-Boy app. Knob 1 is the main control in each app; Knob 2 is
+kept as a secondary in-app action instead of a cross-suite mode dial:
 
-| Mode      | Knob 1 turn            | Knob 1 press        | Knob 2 press        |
+| App       | Knob 1 turn            | Knob 1 press        | Knob 2 action       |
 |-----------|------------------------|---------------------|---------------------|
-| Clock     | Change layout          | Toggle seconds      | Toggle 12/24h       |
-| World     | Scroll zones           | —                   | —                   |
-| Globe     | Scroll zones           | —                   | —                   |
-| Analog    | Change face style      | Toggle date panel   | —                   |
+| Clock     | Change layout          | Toggle seconds      | Toggle 12/24h or layout |
+| World     | Scroll zones           | —                   | Scroll zones        |
+| Globe     | Scroll zones           | —                   | Scroll zones        |
+| Analog    | Change face style      | Toggle date panel   | Change face style   |
 | Stopwatch | Lap (while running)    | Start / stop        | Reset               |
 | Countdown | Adjust time (±1 min)   | Start / stop        | Reset               |
 | Pomodoro  | Adjust phase (±1 min)  | Start / stop        | Reset               |
@@ -91,19 +90,17 @@ cycle through the seven modes. Knob 1 (and a Knob‑2 press) are context-sensiti
 > In code the press is delivered as `dir === 0`; a turn is `dir = ±1`. The on-screen footer
 > always shows the active bindings (`K1 …` / `K2 …`).
 
-Display preferences (clock layout, seconds, 12/24h, analog face/detail) are persisted to
-`USER/CLOCKSUITE.SET` and restored on the next launch.
+Display preferences for Clock and Analog are persisted to separate small settings files and
+restored on the next launch.
 
 ---
 
 ## How it works
 
-The app is a single IIFE in [`APPS/CLOCKSUITE.JS`](APPS/CLOCKSUITE.JS). On load it wires up the
-knob handlers via `Pip.on(...)`, restores saved settings, and starts a `setInterval` ticker that
-redraws the active mode every **500 ms**. The `draw()` dispatcher routes to one `draw<Mode>()`
-per screen; all of them share a common header (title + local time + mode) and footer
-(key bindings) plus a small set of vector/mono font and primitive-drawing helpers
-(`drawLine`, `drawRect`, `drawCircle`, `drawString`, `setColor` against the 3-level palette).
+The suite is split across one small ES5 IIFE per app under [`APPS/`](APPS/). Each file wires its
+own knob handlers via `Pip.on(...)`, starts only the ticker it needs, and removes its listeners
+when the app unloads. This avoids loading the world clock, globe, analog face, and timer code
+all at once, which keeps the Espruino JSVar pool from hitting `LOW_MEMORY`/`MEMORY` failures.
 
 A few pieces are worth calling out:
 
@@ -117,9 +114,9 @@ A few pieces are worth calling out:
   selected city; anything on the far hemisphere is culled. The **day/night terminator** is the
   great circle whose pole is the sub-solar point: the code derives the sub-solar direction from
   an approximate solar declination and the current UTC, expresses it in view space, and traces
-  the boundary directly. The night wash solves the terminator conic per scanline. The selected
-  location sits at the disc center, so its solar elevation is simply the viewer-facing component
-  of the sub-solar vector — that drives the `DAYLIGHT/TWILIGHT/NIGHT` readout.
+  the boundary directly. The selected location sits at the disc center, so its solar elevation is
+  simply the viewer-facing component of the sub-solar vector — that drives the
+  `DAYLIGHT/TWILIGHT/NIGHT` readout.
 
 - **Timers use wall-clock deltas.** The stopwatch, countdown, and Pomodoro store an absolute
   start/end time and recompute remaining/elapsed from `Date.now()` each tick, so they stay
@@ -129,9 +126,9 @@ A few pieces are worth calling out:
 
 | Path | Purpose |
 |------|---------|
-| [`APPS/CLOCKSUITE.JS`](APPS/CLOCKSUITE.JS) | The application (everything runs from here). |
-| [`APPINFO/CLOCK.info`](APPINFO/CLOCK.info) | App-loader manifest (id, name, version, entry point, icon). |
-| [`APPINFO/HOLO.IMG`](APPINFO/HOLO.IMG) | App-loader icon referenced by the manifest. |
+| [`APPS/CLOCKSUITE.JS`](APPS/CLOCKSUITE.JS) and `APPS/CLOCK*.JS` | The seven lightweight app entry points. |
+| [`APPINFO/CLOCK.info`](APPINFO/CLOCK.info) and `APPINFO/*.info` | App-loader manifests for the seven menu entries. |
+| `APPINFO/*.IMG` | 64x64 1-bit holotape icons for each menu entry. |
 | [`install.html`](install.html) | Browser-based installer that downloads the current GitHub payload and writes it to a selected microSD card. |
 | [`tools/render-clock-suite-previews.ps1`](tools/render-clock-suite-previews.ps1) | PowerShell script that renders the preview PNGs. |
 | [`PREVIEWS/`](PREVIEWS/) | Generated screenshots used in this README. |
@@ -150,23 +147,23 @@ select the mounted microSD card root, and let it install the files listed in
 
 1. Connect the Pip‑Boy to your computer (USB / mass-storage, per The Wand Company's
    instructions) so its filesystem is mounted.
-2. Copy the app onto the device, preserving the folder layout:
-   - `APPS/CLOCKSUITE.JS`
-   - `APPINFO/CLOCK.info`
-   - `APPINFO/HOLO.IMG`
-3. Eject the device and reboot it. **Clock Suite** appears in the app menu; launch it and rotate
-   **Knob 2** to move between the seven modes.
+2. Copy the files listed in `APPINFO/CLOCK.info` onto the device, preserving the folder layout.
+   This includes the seven `APPINFO/*.info` manifests, seven `APPINFO/*.IMG` icons, and seven
+   `APPS/CLOCK*.JS` app files.
+3. Eject the device and reboot it. The suite appears as separate **RobCo Clock**, **RobCo World**,
+   **RobCo Globe**, **RobCo Analog**, **RobCo Stopwatch**, **RobCo Countdown**, and
+   **RobCo Pomodoro** menu entries.
 
-No additional libraries or network connection are required — the app uses only the on-device
+No additional libraries or network connection are required — the apps use only the on-device
 `Pip` API, the `Graphics` screen object, and `require("fs")` for saving settings.
 
 ---
 
 ## Development
 
-The app is intentionally dependency-free ES5, so it can be edited with any text editor. The one
-constraint to keep in mind: **the globe/UI geometry is implemented twice** — once in the live app
-([`APPS/CLOCKSUITE.JS`](APPS/CLOCKSUITE.JS)) and once, by hand, in the preview renderer
+The apps are intentionally dependency-free ES5, so they can be edited with any text editor. The
+one constraint to keep in mind: **the globe/UI geometry is implemented twice** — once in the live
+globe app ([`APPS/CLOCKGLOBE.JS`](APPS/CLOCKGLOBE.JS)) and once, by hand, in the preview renderer
 ([`tools/render-clock-suite-previews.ps1`](tools/render-clock-suite-previews.ps1)). If you change
 the projection, shading, or terminator math in the JS, mirror it in the PowerShell script and
 regenerate the previews so the docs don't drift.

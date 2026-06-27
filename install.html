@@ -333,14 +333,14 @@
       <div class="bar">
         <div class="brand">
           <strong>RobCo Chronometer</strong>
-          <span>Clock Suite installer</span>
+          <span>RobCo app suite installer</span>
         </div>
         <span class="status-pill" id="statusPill">Ready</span>
       </div>
 
       <div class="content">
         <h1 id="title">Install to Pip-Boy</h1>
-        <p class="lede">Select the mounted microSD card root. The installer downloads the current files from GitHub and writes the Clock Suite app into the device folders.</p>
+        <p class="lede">Select the mounted microSD card root. The installer removes older Clock Suite files, downloads the current RobCo app suite from GitHub, and writes the separate app entries into the device folders.</p>
 
         <div class="notice" id="supportNotice"></div>
 
@@ -375,8 +375,26 @@
       </div>
       <ul class="payload" id="payloadList">
         <li>APPINFO/CLOCK.info <span>manifest</span></li>
-        <li>APPINFO/HOLO.IMG <span>icon</span></li>
-        <li>APPS/CLOCKSUITE.JS <span>app</span></li>
+        <li>APPINFO/WORLD.info <span>manifest</span></li>
+        <li>APPINFO/GLOBE.info <span>manifest</span></li>
+        <li>APPINFO/ANALOG.info <span>manifest</span></li>
+        <li>APPINFO/STOPWATCH.info <span>manifest</span></li>
+        <li>APPINFO/COUNTDOWN.info <span>manifest</span></li>
+        <li>APPINFO/POMODORO.info <span>manifest</span></li>
+        <li>APPINFO/CLOCK.IMG <span>icon</span></li>
+        <li>APPINFO/WORLD.IMG <span>icon</span></li>
+        <li>APPINFO/GLOBE.IMG <span>icon</span></li>
+        <li>APPINFO/ANALOG.IMG <span>icon</span></li>
+        <li>APPINFO/STOPWATCH.IMG <span>icon</span></li>
+        <li>APPINFO/COUNTDOWN.IMG <span>icon</span></li>
+        <li>APPINFO/POMODORO.IMG <span>icon</span></li>
+        <li>APPS/CLOCKSUITE.JS <span>clock</span></li>
+        <li>APPS/CLOCKWORLD.JS <span>world</span></li>
+        <li>APPS/CLOCKGLOBE.JS <span>globe</span></li>
+        <li>APPS/CLOCKANALOG.JS <span>analog</span></li>
+        <li>APPS/CLOCKSTOP.JS <span>stopwatch</span></li>
+        <li>APPS/CLOCKCOUNT.JS <span>countdown</span></li>
+        <li>APPS/CLOCKPOMO.JS <span>pomodoro</span></li>
       </ul>
     </aside>
   </main>
@@ -394,6 +412,34 @@
       var rawBase = "https://raw.githubusercontent.com/" +
         repo.owner + "/" + repo.name + "/" + repo.branch + "/";
       var cacheToken = "init-" + Date.now();
+      var cleanupPaths = [
+        "APPINFO/CLOCK.info",
+        "APPINFO/WORLD.info",
+        "APPINFO/GLOBE.info",
+        "APPINFO/ANALOG.info",
+        "APPINFO/STOPWATCH.info",
+        "APPINFO/COUNTDOWN.info",
+        "APPINFO/POMODORO.info",
+        "APPINFO/CLOCKSUITE.info",
+        "APPINFO/HOLO.IMG",
+        "APPINFO/CLOCK.IMG",
+        "APPINFO/WORLD.IMG",
+        "APPINFO/GLOBE.IMG",
+        "APPINFO/ANALOG.IMG",
+        "APPINFO/STOPWATCH.IMG",
+        "APPINFO/COUNTDOWN.IMG",
+        "APPINFO/POMODORO.IMG",
+        "APPS/CLOCKSUITE.JS",
+        "APPS/CLOCKWORLD.JS",
+        "APPS/CLOCKGLOBE.JS",
+        "APPS/CLOCKANALOG.JS",
+        "APPS/CLOCKSTOP.JS",
+        "APPS/CLOCKCOUNT.JS",
+        "APPS/CLOCKPOMO.JS",
+        "USER/CLOCKSUITE.SET",
+        "USER/ROBCLOCK.SET",
+        "USER/ROBANALOG.SET"
+      ];
 
       var installButton = document.getElementById("installButton");
       var checkButton = document.getElementById("checkButton");
@@ -473,7 +519,7 @@
           var li = document.createElement("li");
           var tag = document.createElement("span");
           li.textContent = path + " ";
-          tag.textContent = path === manifestPath ? "manifest" : "file";
+          tag.textContent = /\.info$/i.test(path) ? "manifest" : (/\.img$/i.test(path) ? "icon" : "app");
           li.appendChild(tag);
           payloadList.appendChild(li);
         });
@@ -554,6 +600,104 @@
         await writable.close();
       }
 
+      async function openDirectory(root, parts) {
+        var current = root;
+        for (var i = 0; i < parts.length; i += 1) {
+          try {
+            current = await current.getDirectoryHandle(parts[i]);
+          } catch (error) {
+            return null;
+          }
+        }
+        return current;
+      }
+
+      async function removePath(root, path) {
+        validateRelativePath(path);
+        var parts = path.split("/");
+        var filename = parts.pop();
+        var directory = await openDirectory(root, parts);
+        if (!directory) return false;
+        try {
+          await directory.removeEntry(filename);
+          return true;
+        } catch (error) {
+          return false;
+        }
+      }
+
+      function addUniquePath(paths, path) {
+        path = String(path || "").trim().replace(/\\/g, "/");
+        if (!path) return;
+        validateRelativePath(path);
+        if (paths.indexOf(path) === -1) paths.push(path);
+      }
+
+      function manifestLooksRelated(text) {
+        var lower = String(text || "").toLowerCase();
+        return lower.indexOf("clocksuite") !== -1 ||
+          lower.indexOf("clock suite") !== -1 ||
+          lower.indexOf("robco chronometer") !== -1 ||
+          lower.indexOf("robclock") !== -1 ||
+          lower.indexOf("robworld") !== -1 ||
+          lower.indexOf("robglobe") !== -1 ||
+          lower.indexOf("robanalog") !== -1 ||
+          lower.indexOf("robstop") !== -1 ||
+          lower.indexOf("robcount") !== -1 ||
+          lower.indexOf("robpomo") !== -1;
+      }
+
+      function addManifestFileList(paths, manifest) {
+        String(manifest.files || "")
+          .split(",")
+          .map(function(path) { return path.trim().replace(/\\/g, "/"); })
+          .filter(Boolean)
+          .forEach(function(path) { addUniquePath(paths, path); });
+      }
+
+      async function discoverCleanupPaths(root) {
+        var paths = cleanupPaths.slice();
+        var appInfo;
+        try {
+          appInfo = await root.getDirectoryHandle("APPINFO");
+        } catch (error) {
+          return paths;
+        }
+        if (!appInfo.values) return paths;
+        for await (var handle of appInfo.values()) {
+          if (handle.kind !== "file" || !/\.info$/i.test(handle.name)) continue;
+          try {
+            var text = await (await handle.getFile()).text();
+            if (!manifestLooksRelated(text)) continue;
+            addUniquePath(paths, "APPINFO/" + handle.name);
+            try {
+              addManifestFileList(paths, JSON.parse(text));
+            } catch (parseError) {
+              // Text match is enough to remove the manifest; malformed file lists are ignored.
+            }
+          } catch (readError) {
+            // Unreadable manifests are left alone.
+          }
+        }
+        return paths;
+      }
+
+      async function cleanupInstall(root) {
+        var paths = await discoverCleanupPaths(root);
+        var removed = 0;
+        for (var i = 0; i < paths.length; i += 1) {
+          if (await removePath(root, paths[i])) {
+            removed += 1;
+            log("Removed old " + paths[i]);
+          }
+        }
+        if (removed === 0) {
+          log("No older Clock Suite files detected.");
+        } else {
+          log("Removed " + removed + " older Clock Suite file" + (removed === 1 ? "." : "s."));
+        }
+      }
+
       async function checkDeviceShape(root) {
         var found = [];
         try {
@@ -607,6 +751,9 @@
             setProgress(done, total * 2);
           });
           log("Payload: " + payload.manifest.name + " v" + payload.manifest.version);
+
+          setStatus("Clean");
+          await cleanupInstall(directory);
 
           setStatus("Write");
           for (var i = 0; i < payload.files.length; i += 1) {
