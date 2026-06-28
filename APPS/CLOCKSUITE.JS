@@ -90,31 +90,39 @@
 
   function drawHeader(d) {
     var w = screen.getWidth ? screen.getWidth() : 480;
+    var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.reset().clear();
+    screen.setColor(1);
+    screen.drawRect(22, 6, w - 23, hgt - 8);
+    screen.drawLine(22, 34, w - 23, 34);
+    screen.drawLine(22, 58, w - 23, 58);
     screen.setColor(3);
-    setMono().setFontAlign(-1, -1).drawString("ROBCO CLOCK", MARGIN, 8);
+    setMono().setFontAlign(-1, -1).drawString("ROBCO INDUSTRIES (TM)", MARGIN, 8);
     setMono().setFontAlign(1, -1).drawString(formatTime(d, false), w - MARGIN, 8);
-    screen.drawLine(0, 32, w, 32);
-    setMono().setFontAlign(0, -1).drawString(layouts[clockLayout], w / 2, 36);
+    screen.setColor(1);
+    setMono().setFontAlign(-1, -1).drawString("TERMLINK CHRONOMETER", MARGIN, 36);
+    setMono().setFontAlign(1, -1).drawString("MODE " + layouts[clockLayout], w - MARGIN, 36);
   }
 
   function drawFooter() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
-    screen.drawLine(0, hgt - 32, w, hgt - 32);
+    screen.drawLine(22, hgt - 34, w - 23, hgt - 34);
     setMono().setFontAlign(-1, -1).drawString("K1 LAYOUT/SEC", MARGIN, hgt - 24);
-    setMono().setFontAlign(1, -1).drawString("K2 12H/24H", w - MARGIN, hgt - 24);
+    setMono().setFontAlign(1, -1).drawString("K2 FORMAT/MODE", w - MARGIN, hgt - 24);
   }
 
   function drawRail() {
     screen.setColor(1);
-    screen.drawRect(326, 78, 468, 232);
-    setMono().setFontAlign(0, -1).drawString("DISPLAY", 397, 86);
-    setMono().setFontAlign(-1, -1).drawString("LAYOUT " + layouts[clockLayout], 336, 116);
-    setMono().setFontAlign(-1, -1).drawString("SECS " + (showSeconds ? "ON" : "OFF"), 336, 140);
-    setMono().setFontAlign(-1, -1).drawString("FMT " + (hour24 ? "24H" : "12H"), 336, 164);
-    setMono().setFontAlign(-1, -1).drawString("SIGNAL OK", 336, 188);
+    screen.drawRect(306, 76, 454, 248);
+    screen.drawLine(306, 104, 454, 104);
+    setMono().setFontAlign(0, -1).drawString("DISPLAY CFG", 380, 84);
+    setMono().setFontAlign(-1, -1).drawString("> LAYOUT " + layouts[clockLayout], 318, 116);
+    setMono().setFontAlign(-1, -1).drawString("> SECONDS " + (showSeconds ? "ON" : "OFF"), 318, 140);
+    setMono().setFontAlign(-1, -1).drawString("> FORMAT " + (hour24 ? "24H" : "12H"), 318, 164);
+    setMono().setFontAlign(-1, -1).drawString("SIG RTC OK", 318, 196);
+    setMono().setFontAlign(-1, -1).drawString("ADDR 0x2077", 318, 220);
   }
 
   function draw() {
@@ -124,17 +132,18 @@
     drawHeader(d);
     screen.setColor(3);
     if (clockLayout === 0) {
-      setVector(showSeconds ? 54 : 72).setFontAlign(0, 0).drawString(formatTime(d, showSeconds), w / 2, 145);
-      setMono().setFontAlign(0, -1).drawString("VAULT-TEC LOCAL TIME", w / 2, 215);
+      setVector(showSeconds ? 54 : 72).setFontAlign(0, 0).drawString(formatTime(d, showSeconds), w / 2, 146);
+      screen.setColor(1);
+      setMono().setFontAlign(0, -1).drawString("ROBCO LOCAL TIMEBASE", w / 2, 216);
     } else {
       setVector(showSeconds ? 46 : 62).setFontAlign(0, 0).drawString(formatTime(d, showSeconds), 172, 132);
       setMono().setFontAlign(0, -1).drawString(formatDate(d), 172, 180);
       if (clockLayout >= 2) {
         screen.setColor(1);
-        setMono().setFontAlign(0, -1).drawString("PIP-BOY RTC  " + formatOffset(), 172, 210);
+        setMono().setFontAlign(0, -1).drawString("RTC BUS  " + formatOffset(), 172, 210);
       }
       if (clockLayout >= 3) {
-        setMono().setFontAlign(0, -1).drawString("VAULT STATUS: NOMINAL", 172, 236);
+        setMono().setFontAlign(0, -1).drawString("TERMLINK STATUS NOMINAL", 172, 236);
       }
       drawRail();
     }
@@ -150,6 +159,7 @@
   }
 
   function onKnob1(dir) {
+    dir = dir | 0;
     if (dir === 0) showSeconds = !showSeconds;
     else clockLayout = wrap(clockLayout + dir, layouts.length);
     dirty = true;
@@ -158,6 +168,7 @@
   }
 
   function onKnob2(dir) {
+    dir = dir | 0;
     if (dir === 0) hour24 = !hour24;
     else clockLayout = wrap(clockLayout + dir, layouts.length);
     dirty = true;

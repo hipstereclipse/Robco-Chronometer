@@ -35,7 +35,7 @@ function Draw-Text {
 
 function Draw-Header {
   param($G, $BrushGreen, $PenGreen, [string]$Mode)
-  Draw-Text $G "ROBCO CHRONOMETER" $FontMono $BrushGreen $Margin 8 250 "Left"
+  Draw-Text $G "ROBCO INDUSTRIES (TM)" $FontMono $BrushGreen $Margin 8 260 "Left"
   Draw-Text $G "12:34" $FontMono $BrushGreen ($W - $Margin - 100) 8 100 "Right"
   $G.DrawLine($PenGreen, 0, 32, $W, 32)
   Draw-Text $G $Mode $FontMono $BrushGreen 0 36 $W "Center"
@@ -320,13 +320,13 @@ Draw-Screen "01-clock-date-config.png" "CLOCK" {
   Draw-Text $G "SECS ON" $FontSmall $BrushDim 336 142 120 "Left"
   Draw-Text $G "FMT 24H" $FontSmall $BrushDim 336 166 120 "Left"
   Draw-Text $G "ROBCO UI" $FontSmall $BrushDim 336 190 120 "Left"
-} "K1 LAYOUT/SEC" "K2 12H/24H"
+} "K1 LAYOUT/SEC" "K2 FORMAT/MODE"
 
 Draw-Screen "02-clock-time-only.png" "CLOCK" {
   param($G, $BrushGreen, $BrushDim, $PenGreen, $PenDim)
   Draw-Text $G "12:34" $FontHuge $BrushGreen 0 108 $W "Center"
   Draw-Text $G "VAULT-TEC LOCAL TIME" $FontMono $BrushDim 0 218 $W "Center"
-} "K1 LAYOUT/SEC" "K2 12H/24H"
+} "K1 LAYOUT/SEC" "K2 FORMAT/MODE"
 
 Draw-Screen "03-world-dst-relay.png" "WORLD" {
   param($G, $BrushGreen, $BrushDim, $PenGreen, $PenDim)
@@ -354,16 +354,16 @@ Draw-Screen "03-world-dst-relay.png" "WORLD" {
     Draw-Text $G $Rows[$I][1] $FontMono $Brush 352 ($Y - 10) 60 "Left"
     Draw-Text $G $Rows[$I][2] $FontMono $Brush 386 ($Y - 10) 80 "Right"
   }
-} "K1 ZONES" "K2 ZONES"
+} "K1 RELAY +/-" "K2 RELAY +/-"
 
 Draw-Screen "04-globe-orbital-relay.png" "GLOBE" {
   param($G, $BrushGreen, $BrushDim, $PenGreen, $PenDim)
   $Cx = 150
   $Cy = 166
   $R = 104
-  $CenterLat = 41
-  $CenterLon = -74
-  # Scene instant: 12:34 EDT (UTC-4) on 27 Jun 2026 -> 16.567 UTC, day-of-year 178.
+  $CenterLat = 0
+  $CenterLon = -60
+  # Scene instant: 12:34 in UTC-04:00 on 27 Jun 2026 -> 16.567 UTC, day-of-year 178.
   $UtcHours = 16.0 + (34.0 / 60.0)
   $Decl = -23.44 * [Math]::PI / 180 * [Math]::Cos(2 * [Math]::PI * (178 + 10) / 365.24)
   $SsLon = Wrap-Lon ((12 - $UtcHours) * 15)
@@ -406,15 +406,15 @@ Draw-Screen "04-globe-orbital-relay.png" "GLOBE" {
   $ElevStr = $(if ($Elev -ge 0) { "+" } else { "-" }) + [Math]::Round([Math]::Abs($Elev))
   $PhaseBrush = if ($Elev -ge 0) { $BrushGreen } else { $BrushDim }
 
-  Draw-Text $G "ROBCO ORBITAL RELAY" $FontSmall $BrushGreen 270 72 170 "Center"
+  Draw-Text $G "ROBCO TZ RELAY" $FontSmall $BrushGreen 270 72 170 "Center"
   $G.DrawRectangle($PenDim, 272, 96, 158, 184)
-  Draw-Text $G "NYC EDT" $FontMono $BrushDim 272 112 158 "Center"
+  Draw-Text $G "UTC-04:00" $FontMono $BrushDim 272 112 158 "Center"
   Draw-Text $G "12:34" $FontMid $BrushGreen 272 137 158 "Center"
-  Draw-Text $G "SATURDAY" $FontSmall $BrushDim 272 188 158 "Center"
-  Draw-Text $G "JUNE 27, 2026" $FontSmall $BrushDim 272 212 158 "Center"
-  Draw-Text $G "FIX 41N 74W" $FontSmall $BrushDim 272 236 158 "Center"
+  Draw-Text $G "JUN 27" $FontSmall $BrushDim 272 188 158 "Center"
+  Draw-Text $G "MERIDIAN 60W" $FontSmall $BrushDim 272 212 158 "Center"
+  Draw-Text $G "BAND 10/39" $FontSmall $BrushDim 272 236 158 "Center"
   Draw-Text $G "$Phase $ElevStr" $FontSmall $PhaseBrush 272 260 158 "Center"
-} "K1 ZONES" "K2 ZONES"
+} "K1 TZ BAND +/-" "K2 TZ BAND +/-"
 
 Draw-Screen "05-analog-clock.png" "CHRONO" {
   param($G, $BrushGreen, $BrushDim, $PenGreen, $PenDim)

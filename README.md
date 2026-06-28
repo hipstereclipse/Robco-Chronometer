@@ -40,11 +40,13 @@ selected zone's UTC offset and DST state.
 ![World clock relay with DST](PREVIEWS/03-world-dst-relay.png)
 
 ### Globe
-An orthographic globe centered on the selected city, with low-poly **continent coastlines**, a
-lat/long graticule, the city's time-zone meridian, and a **live day/night terminator** computed
-from the real solar position.
+An orthographic globe centered on the selected UTC time-zone band, with low-poly **continent
+coastlines**, a lat/long graticule, the band's meridian and boundary lines, and a **live day/night
+terminator** computed from the real solar position. The band rail cycles through the active civil
+UTC offsets, including half-hour and quarter-hour zones, instead of jumping between a handful of
+cities.
 The sub-solar point ("high noon") is marked when visible, and the side panel reports the selected
-location's local time plus its solar phase (`DAYLIGHT` / `TWILIGHT` / `NIGHT`) and sun elevation.
+band's local time plus its solar phase (`DAYLIGHT` / `TWILIGHT` / `NIGHT`) and sun elevation.
 
 ![Globe with orbital relay panel](PREVIEWS/04-globe-orbital-relay.png)
 
@@ -56,7 +58,8 @@ styles (`CHRONO`, `FIELD`, `RANGER`), and a date/time panel that can be toggled 
 
 ### Stopwatch
 Start/stop with a lap capture, hundredths-of-a-second display, and a sub-second sweep bar. While
-running it redraws at about 100 Hz for smooth motion; while stopped it idles until the next input.
+running it redraws at about 20 Hz to keep the device event loop stable; while stopped it idles
+until the next input.
 
 ![Stopwatch running with lap](PREVIEWS/06-stopwatch-running-lap.png)
 
@@ -83,7 +86,7 @@ kept as a secondary in-app action instead of a cross-suite mode dial:
 |-----------|------------------------|---------------------|---------------------|
 | Clock     | Change layout          | Toggle seconds      | Toggle 12/24h or layout |
 | World     | Scroll zones           | —                   | Scroll zones        |
-| Globe     | Scroll zones           | —                   | Scroll zones        |
+| Globe     | Scroll timezone bands  | —                   | Scroll timezone bands |
 | Analog    | Change face style      | Toggle date panel   | Change face style   |
 | Stopwatch | Lap (while running)    | Start / stop        | Reset               |
 | Countdown | Adjust time (±1 min)   | Start / stop        | Reset               |
@@ -117,12 +120,13 @@ A few pieces are worth calling out:
   southern-hemisphere zones wrap correctly across the new year.
 
 - **The globe.** Points are placed with an **oblique orthographic projection** centered on the
-  selected city; anything on the far hemisphere is culled. The **day/night terminator** is the
-  great circle whose pole is the sub-solar point: the code derives the sub-solar direction from
-  an approximate solar declination and the current UTC, expresses it in view space, and traces
-  the boundary directly. The selected location sits at the disc center, so its solar elevation is
-  simply the viewer-facing component of the sub-solar vector — that drives the
-  `DAYLIGHT/TWILIGHT/NIGHT` readout.
+  selected UTC-offset meridian; anything on the far hemisphere is culled. The globe rail covers
+  the active civil UTC offsets, including half-hour and quarter-hour bands. The **day/night
+  terminator** is the great circle whose pole is the sub-solar point: the code derives the
+  sub-solar direction from an approximate solar declination and the current UTC, expresses it in
+  view space, and traces the boundary directly. The selected meridian sits at the disc center, so
+  its equatorial solar elevation is simply the viewer-facing component of the sub-solar vector —
+  that drives the `DAYLIGHT/TWILIGHT/NIGHT` readout.
 
 - **Timers use wall-clock deltas.** The stopwatch, countdown, and Pomodoro store an absolute
   start/end time and recompute remaining/elapsed from `Date.now()` each tick, so they stay

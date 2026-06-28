@@ -55,6 +55,21 @@
     return h > 0 ? pad2(h) + ":" + pad2(m) + ":" + pad2(s) : pad2(m) + ":" + pad2(s);
   }
 
+  function fillBar(x0, y0, x1, y1) {
+    var y;
+    for (y = y0; y <= y1; y++) screen.drawLine(x0, y, x1, y);
+  }
+
+  function drawProgress(x0, y0, x1, y1, frac) {
+    frac = Math.max(0, Math.min(1, frac));
+    screen.setColor(1);
+    screen.drawRect(x0, y0, x1, y1);
+    if (frac > 0) {
+      screen.setColor(3);
+      fillBar(x0 + 2, y0 + 2, x0 + 2 + Math.round((x1 - x0 - 4) * frac), y1 - 2);
+    }
+  }
+
   function current() {
     if (!running) return remaining;
     return Math.max(0, Math.ceil((endTime - nowMs()) / 1000));
@@ -62,31 +77,43 @@
 
   function drawHeader() {
     var w = screen.getWidth ? screen.getWidth() : 480;
+    var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.reset().clear();
+    screen.setColor(1);
+    screen.drawRect(22, 6, w - 23, hgt - 8);
+    screen.drawLine(22, 34, w - 23, 34);
+    screen.drawLine(22, 58, w - 23, 58);
     screen.setColor(3);
-    setMono().setFontAlign(-1, -1).drawString("ROBCO COUNTDOWN", MARGIN, 8);
+    setMono().setFontAlign(-1, -1).drawString("ROBCO INDUSTRIES (TM)", MARGIN, 8);
     setMono().setFontAlign(1, -1).drawString("RADSAFE", w - MARGIN, 8);
-    screen.drawLine(0, 32, w, 32);
-    setMono().setFontAlign(0, -1).drawString("COUNTDOWN", w / 2, 36);
+    screen.setColor(1);
+    setMono().setFontAlign(-1, -1).drawString("TERMLINK TIMER", MARGIN, 36);
+    setMono().setFontAlign(1, -1).drawString("COUNTDOWN", w - MARGIN, 36);
   }
 
   function drawFooter() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var h = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
-    screen.drawLine(0, h - 32, w, h - 32);
+    screen.drawLine(22, h - 34, w - 23, h - 34);
     setMono().setFontAlign(-1, -1).drawString("K1 START/ADJ", MARGIN, h - 24);
     setMono().setFontAlign(1, -1).drawString("K2 RESET", w - MARGIN, h - 24);
   }
 
   function draw() {
     if (!screen) return;
+    var cur = current();
     drawHeader();
-    screen.setColor(3);
-    setVector(64).setFontAlign(0, 0).drawString(formatDuration(current()), 238, 130);
-    setMono().setFontAlign(0, -1).drawString(running ? "RADSAFE COUNTDOWN ACTIVE" : "SET " + formatDuration(setSeconds), 238, 196);
     screen.setColor(1);
-    setMono().setFontAlign(0, -1).drawString("ADJUSTMENT: ONE MINUTE STEPS", 238, 230);
+    screen.drawRect(58, 74, 420, 254);
+    screen.drawLine(58, 180, 420, 180);
+    screen.setColor(3);
+    setVector(64).setFontAlign(0, 0).drawString(formatDuration(cur), 238, 128);
+    drawProgress(94, 164, 386, 173, setSeconds ? cur / setSeconds : 0);
+    screen.setColor(3);
+    setMono().setFontAlign(0, -1).drawString(running ? "RADSAFE PROTOCOL ACTIVE" : "SET " + formatDuration(setSeconds), 238, 196);
+    screen.setColor(1);
+    setMono().setFontAlign(0, -1).drawString("ADJUSTMENT ONE MINUTE STEPS", 238, 230);
     drawFooter();
     if (screen.flip) screen.flip();
   }
@@ -124,6 +151,7 @@
   }
 
   function onKnob1(dir) {
+    dir = dir | 0;
     if (dir === 0) {
       toggle();
     } else if (!running) {
@@ -135,6 +163,7 @@
   }
 
   function onKnob2(dir) {
+    dir = dir | 0;
     reset();
   }
 

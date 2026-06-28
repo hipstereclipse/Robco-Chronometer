@@ -72,19 +72,25 @@
 
   function drawHeader(d) {
     var w = screen.getWidth ? screen.getWidth() : 480;
+    var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.reset().clear();
+    screen.setColor(1);
+    screen.drawRect(22, 6, w - 23, hgt - 8);
+    screen.drawLine(22, 34, w - 23, 34);
+    screen.drawLine(22, 58, w - 23, 58);
     screen.setColor(3);
-    setMono().setFontAlign(-1, -1).drawString("ROBCO ANALOG", MARGIN, 8);
+    setMono().setFontAlign(-1, -1).drawString("ROBCO INDUSTRIES (TM)", MARGIN, 8);
     setMono().setFontAlign(1, -1).drawString(pad2(d.getHours()) + ":" + pad2(d.getMinutes()), w - MARGIN, 8);
-    screen.drawLine(0, 32, w, 32);
-    setMono().setFontAlign(0, -1).drawString(styleNames[analogStyle], w / 2, 36);
+    screen.setColor(1);
+    setMono().setFontAlign(-1, -1).drawString("TERMLINK ANALOG MODULE", MARGIN, 36);
+    setMono().setFontAlign(1, -1).drawString("FACE " + styleNames[analogStyle], w - MARGIN, 36);
   }
 
   function drawFooter() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
-    screen.drawLine(0, hgt - 32, w, hgt - 32);
+    screen.drawLine(22, hgt - 34, w - 23, hgt - 34);
     setMono().setFontAlign(-1, -1).drawString("K1 FACE/DATA", MARGIN, hgt - 24);
     setMono().setFontAlign(1, -1).drawString("K2 FACE", w - MARGIN, hgt - 24);
   }
@@ -187,7 +193,7 @@
     screen.setColor(1);
     screen.drawRect(274, 70, 446, 256);
     line(274, 96, 446, 96);
-    setMono().setFontAlign(0, -1).drawString("VAULT-TEC CHRONO", 360, 76);
+    setMono().setFontAlign(0, -1).drawString("ROBCO CHRONO", 360, 76);
   }
 
   function draw() {
@@ -226,6 +232,7 @@
   }
 
   function onKnob1(dir) {
+    dir = dir | 0;
     if (dir === 0) analogDetail = !analogDetail;
     else analogStyle = wrap(analogStyle + dir, 3);
     dirty = true;
@@ -234,6 +241,7 @@
   }
 
   function onKnob2(dir) {
+    dir = dir | 0;
     analogStyle = wrap(analogStyle + (dir || 1), 3);
     dirty = true;
     sound("CLICK");

@@ -6,10 +6,9 @@
   var start = 0;
   var elapsed = 0;
   var lap = -1;
-  // While running we redraw at ~100 Hz so the hundredths digits and the
-  // sub-second sweep animate smoothly; while stopped the screen is static and
-  // only repaints on input, so we idle the CPU.
-  var FAST_MS = 10;
+  // While running we redraw often enough for hundredths to visibly update, but
+  // not so often that the Espruino event loop is flooded on-device.
+  var FAST_MS = 50;
   // Inset for content near the rounded-corner bezel (see header/footer).
   var MARGIN = 32;
 
@@ -68,19 +67,25 @@
 
   function drawHeader() {
     var w = screen.getWidth ? screen.getWidth() : 480;
+    var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.reset().clear();
+    screen.setColor(1);
+    screen.drawRect(22, 6, w - 23, hgt - 8);
+    screen.drawLine(22, 34, w - 23, 34);
+    screen.drawLine(22, 58, w - 23, 58);
     screen.setColor(3);
-    setMono().setFontAlign(-1, -1).drawString("ROBCO STOPWATCH", MARGIN, 8);
+    setMono().setFontAlign(-1, -1).drawString("ROBCO INDUSTRIES (TM)", MARGIN, 8);
     setMono().setFontAlign(1, -1).drawString("FIELD TEST", w - MARGIN, 8);
-    screen.drawLine(0, 32, w, 32);
-    setMono().setFontAlign(0, -1).drawString("STOPWATCH", w / 2, 36);
+    screen.setColor(1);
+    setMono().setFontAlign(-1, -1).drawString("TERMLINK TIMER", MARGIN, 36);
+    setMono().setFontAlign(1, -1).drawString("STOPWATCH", w - MARGIN, 36);
   }
 
   function drawFooter() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
-    screen.drawLine(0, hgt - 32, w, hgt - 32);
+    screen.drawLine(22, hgt - 34, w - 23, hgt - 34);
     setMono().setFontAlign(-1, -1).drawString("K1 START/LAP", MARGIN, hgt - 24);
     setMono().setFontAlign(1, -1).drawString("K2 RESET", w - MARGIN, hgt - 24);
   }
@@ -91,6 +96,9 @@
     var ms = stopwatchMs();
     var cx = w / 2;
     drawHeader();
+    screen.setColor(1);
+    screen.drawRect(58, 76, w - 58, 254);
+    screen.drawLine(58, 178, w - 58, 178);
     // Main elapsed time.
     screen.setColor(3);
     setVector(60).setFontAlign(0, 0).drawString(formatMs(ms), cx, 122);
@@ -105,10 +113,10 @@
     }
     // Status.
     screen.setColor(running ? 3 : 1);
-    setMono().setFontAlign(0, -1).drawString(running ? "FIELD TEST RUNNING" : "FIELD TEST STOPPED", cx, 192);
+    setMono().setFontAlign(0, -1).drawString(running ? "PROTOCOL RUNNING" : "PROTOCOL HALTED", cx, 192);
     // Lap.
     screen.setColor(1);
-    setMono().setFontAlign(0, -1).drawString(lap >= 0 ? "LAP  " + formatMs(lap) : "LAP  --:--.--", cx, 224);
+    setMono().setFontAlign(0, -1).drawString(lap >= 0 ? "ADDR 0xF4F0  LAP " + formatMs(lap) : "ADDR 0xF4F0  LAP --:--.--", cx, 224);
     drawFooter();
     if (screen.flip) screen.flip();
   }
@@ -152,6 +160,7 @@
   }
 
   function onKnob1(dir) {
+    dir = dir | 0;
     if (dir === 0) {
       toggle();
     } else if (running) {
@@ -164,6 +173,7 @@
   }
 
   function onKnob2(dir) {
+    dir = dir | 0;
     reset();
   }
 

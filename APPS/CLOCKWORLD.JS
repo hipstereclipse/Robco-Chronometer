@@ -31,6 +31,12 @@
     return n < 10 ? "0" + n : "" + n;
   }
 
+  function hex4(n) {
+    var s = (n & 65535).toString(16).toUpperCase();
+    while (s.length < 4) s = "0" + s;
+    return "0x" + s;
+  }
+
   function wrap(n, max) {
     n = n % max;
     return n < 0 ? n + max : n;
@@ -200,21 +206,27 @@
 
   function drawHeader(d) {
     var w = screen.getWidth ? screen.getWidth() : 480;
+    var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.reset().clear();
+    screen.setColor(1);
+    screen.drawRect(22, 6, w - 23, hgt - 8);
+    screen.drawLine(22, 34, w - 23, 34);
+    screen.drawLine(22, 58, w - 23, 58);
     screen.setColor(3);
-    setMono().setFontAlign(-1, -1).drawString("ROBCO WORLD CLOCK", MARGIN, 8);
+    setMono().setFontAlign(-1, -1).drawString("ROBCO INDUSTRIES (TM)", MARGIN, 8);
     setMono().setFontAlign(1, -1).drawString(formatTime(d, false), w - MARGIN, 8);
-    screen.drawLine(0, 32, w, 32);
-    setMono().setFontAlign(0, -1).drawString("WORLD", w / 2, 36);
+    screen.setColor(1);
+    setMono().setFontAlign(-1, -1).drawString("TERMLINK WORLD RELAY", MARGIN, 36);
+    setMono().setFontAlign(1, -1).drawString("NODE " + zones[worldIndex][0], w - MARGIN, 36);
   }
 
   function drawFooter() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
-    screen.drawLine(0, hgt - 32, w, hgt - 32);
-    setMono().setFontAlign(-1, -1).drawString("K1 ZONES", MARGIN, hgt - 24);
-    setMono().setFontAlign(1, -1).drawString("K2 ZONES", w - MARGIN, hgt - 24);
+    screen.drawLine(22, hgt - 34, w - 23, hgt - 34);
+    setMono().setFontAlign(-1, -1).drawString("K1 RELAY +/-", MARGIN, hgt - 24);
+    setMono().setFontAlign(1, -1).drawString("K2 RELAY +/-", w - MARGIN, hgt - 24);
   }
 
   function draw() {
@@ -224,27 +236,32 @@
     var now = new Date();
     var i;
     drawHeader(now);
-    screen.setColor(3);
-    setVector(40).setFontAlign(0, 0).drawString(formatTime(now, false), 118, 120);
-    setMono().setFontAlign(0, -1).drawString("LOCAL VAULT CLOCK", 118, 164);
     screen.setColor(1);
-    setMono().setFontAlign(0, -1).drawString(formatDate(now), 118, 190);
-    setMono().setFontAlign(0, -1).drawString(localOffsetText(), 118, 216);
-    setMono().setFontAlign(0, -1).drawString(zones[worldIndex][0] + " " + zoneAbbr(worldIndex, utc), 118, 242);
-    setMono().setFontAlign(0, -1).drawString(formatOffset(zoneOffset(worldIndex, utc)) + " " + (zoneIsDst(worldIndex, utc) ? "SUMMER" : "STANDARD"), 118, 266);
-    screen.drawLine(242, 66, 242, 282);
-    setMono().setFontAlign(-1, -1).drawString("WASTELAND RELAY", 252, 60);
-    // The relay rows use a smaller vector font so city + zone + time fit in three
-    // fixed columns without colliding -- Monofonto23 is too wide here and the long
-    // city names (ADELAIDE/AUCKLAND) ran straight into the zone abbreviation.
+    screen.drawRect(34, 72, 232, 270);
+    screen.drawLine(34, 100, 232, 100);
+    setMono().setFontAlign(0, -1).drawString("LOCAL VAULT NODE", 133, 80);
+    screen.setColor(3);
+    setVector(38).setFontAlign(0, 0).drawString(formatTime(now, false), 133, 126);
+    setMono().setFontAlign(0, -1).drawString("RTC LINK ACTIVE", 133, 164);
+    screen.setColor(1);
+    setMono().setFontAlign(0, -1).drawString(formatDate(now), 133, 190);
+    setMono().setFontAlign(0, -1).drawString(localOffsetText(), 133, 214);
+    setMono().setFontAlign(0, -1).drawString(zones[worldIndex][0] + " " + zoneAbbr(worldIndex, utc), 133, 238);
+    setMono().setFontAlign(0, -1).drawString(zoneIsDst(worldIndex, utc) ? "SUMMER TIME" : "STANDARD TIME", 133, 252);
+    screen.drawRect(244, 72, w - 24, 270);
+    screen.drawLine(244, 100, w - 24, 100);
+    setMono().setFontAlign(-1, -1).drawString("WASTELAND RELAY", 254, 80);
+    // Smaller vector rows keep the fixed memory-address/city/zone/time columns
+    // readable on the device's narrow screen.
     for (i = 0; i < 5; i++) {
       var zi = (worldIndex + i) % zones.length;
       var zd = zoneDate(zi, utc);
-      var y = 104 + (i * 34);
+      var y = 118 + (i * 30);
       screen.setColor(i === 0 ? 3 : 1);
-      setVector(16).setFontAlign(-1, 0).drawString(zones[zi][0], 252, y);
-      setVector(16).setFontAlign(-1, 0).drawString(zoneAbbr(zi, utc), 352, y);
-      setVector(16).setFontAlign(1, 0).drawString(formatTime(zd, true), w - 14, y);
+      setVector(14).setFontAlign(-1, 0).drawString(hex4(0xF4F0 + (zi * 44)), 254, y);
+      setVector(14).setFontAlign(-1, 0).drawString(zones[zi][0], 318, y);
+      setVector(14).setFontAlign(-1, 0).drawString(zoneAbbr(zi, utc), 388, y);
+      setVector(14).setFontAlign(1, 0).drawString(formatTime(zd, true), w - 30, y);
     }
     drawFooter();
     if (screen.flip) screen.flip();
@@ -258,6 +275,7 @@
   }
 
   function rotate(dir) {
+    dir = dir | 0;
     if (dir !== 0) {
       worldIndex = wrap(worldIndex + dir, zones.length);
       sound("CLICK");

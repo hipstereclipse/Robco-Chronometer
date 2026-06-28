@@ -6,21 +6,11 @@
   var MARGIN = 32;
   var MS_PER_MIN = 60000;
   var MS_PER_DAY = 86400000;
-  var worldIndex = 1;
+  var worldIndex = 14;
   var monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-  var zones = [
-    ["UTC", 0, 0, "UTC", "", 0, 0],
-    ["NYC", -300, 1, "EST", "EDT", -74, 41],
-    ["CHI", -360, 1, "CST", "CDT", -87, 42],
-    ["DEN", -420, 1, "MST", "MDT", -105, 40],
-    ["L.A.", -480, 1, "PST", "PDT", -118, 34],
-    ["LONDON", 0, 2, "GMT", "BST", 0, 51],
-    ["PARIS", 60, 2, "CET", "CEST", 2, 49],
-    ["TOKYO", 540, 0, "JST", "", 140, 36],
-    ["SYDNEY", 600, 3, "AEST", "AEDT", 151, -34],
-    ["ADELAIDE", 570, 3, "ACST", "ACDT", 139, -35],
-    ["AUCKLAND", 720, 4, "NZST", "NZDT", 175, -37]
-  ];
+  // Civil UTC offsets in active use, including half-hour and quarter-hour bands.
+  // The globe centers on each zone's standard meridian instead of a sample city.
+  var zones = [-720, -660, -600, -570, -540, -480, -420, -360, -300, -240, -210, -180, -120, -60, 0, 60, 120, 180, 210, 240, 270, 300, 330, 345, 360, 390, 420, 480, 525, 540, 570, 600, 630, 660, 720, 765, 780, 825, 840];
   var px = 0, py = 0, sunX = 0, sunY = 0, sunZ = 0;
 
   function nowMs() {
@@ -94,14 +84,6 @@
     return days;
   }
 
-  function utcMs(year, month, day, hour) {
-    return ((daysBeforeYear(year) + daysBeforeMonth(year, month) + day - 1) * MS_PER_DAY) + (hour * 3600000);
-  }
-
-  function dayOfWeek(year, month, day) {
-    return wrap(daysBeforeYear(year) + daysBeforeMonth(year, month) + day - 1 + 4, 7);
-  }
-
   function fieldsFromUtc(ms) {
     var dayCount = Math.floor(ms / MS_PER_DAY);
     var rem = ms - (dayCount * MS_PER_DAY);
@@ -132,65 +114,67 @@
     };
   }
 
-  function nthSunday(year, month, nth) {
-    return 1 + ((7 - dayOfWeek(year, month, 1)) % 7) + ((nth - 1) * 7);
+  function localZoneIndex() {
+    var d = new Date();
+    var local = d.getTimezoneOffset ? -d.getTimezoneOffset() : 0;
+    var best = 14;
+    var diff = 9999;
+    var i;
+    for (i = 0; i < zones.length; i++) {
+      var nd = Math.abs(zones[i] - local);
+      if (nd < diff) {
+        best = i;
+        diff = nd;
+      }
+    }
+    return best;
   }
 
-  function lastSunday(year, month) {
-    var d = daysInMonth(year, month);
-    return d - dayOfWeek(year, month, d);
+  function safeZone(i) {
+    if (i !== i) return localZoneIndex();
+    i = i | 0;
+    if (i < 0 || i >= zones.length) return localZoneIndex();
+    return i;
   }
 
-  function transitionUtc(year, month, day, hour, offsetMinutes) {
-    return utcMs(year, month, day, hour) - (offsetMinutes * MS_PER_MIN);
-  }
-
-  function zoneIsDst(i, utc) {
-    var z = zones[i];
-    var y;
-    if (z[2] === 1) {
-      y = fieldsFromUtc(utc + (z[1] * MS_PER_MIN)).year;
-      return utc >= transitionUtc(y, 2, nthSunday(y, 2, 2), 2, z[1]) &&
-        utc < transitionUtc(y, 10, nthSunday(y, 10, 1), 2, z[1] + 60);
-    }
-    if (z[2] === 2) {
-      y = fieldsFromUtc(utc).year;
-      return utc >= utcMs(y, 2, lastSunday(y, 2), 1) &&
-        utc < utcMs(y, 9, lastSunday(y, 9), 1);
-    }
-    if (z[2] === 3) {
-      y = fieldsFromUtc(utc + (z[1] * MS_PER_MIN)).year;
-      return utc >= transitionUtc(y, 9, nthSunday(y, 9, 1), 2, z[1]) ||
-        utc < transitionUtc(y, 3, nthSunday(y, 3, 1), 3, z[1] + 60);
-    }
-    if (z[2] === 4) {
-      y = fieldsFromUtc(utc + (z[1] * MS_PER_MIN)).year;
-      return utc >= transitionUtc(y, 8, lastSunday(y, 8), 2, z[1]) ||
-        utc < transitionUtc(y, 3, nthSunday(y, 3, 1), 3, z[1] + 60);
-    }
-    return false;
+  function formatOffset(minutes) {
+    if (minutes === 0) return "UTC";
+    return "UTC" + (minutes > 0 ? "+" : "-") + pad2(Math.floor(Math.abs(minutes) / 60)) + ":" + pad2(Math.abs(minutes) % 60);
   }
 
   function zoneOffset(i, utc) {
-    return zones[i][1] + (zoneIsDst(i, utc) ? 60 : 0);
+    return zones[safeZone(i)];
   }
 
   function zoneAbbr(i, utc) {
-    return zoneIsDst(i, utc) && zones[i][4] ? zones[i][4] : zones[i][3];
+    return formatOffset(zoneOffset(i, utc));
   }
 
   function zoneDate(i, utc) {
     return fieldsFromUtc(utc + (zoneOffset(i, utc) * MS_PER_MIN));
   }
 
+  function zoneLon(i) {
+    return wrapLon(zoneOffset(i, 0) / 4);
+  }
+
   function formatTime(d) {
     return pad2(d.hour) + ":" + pad2(d.minute);
   }
 
+  function formatCoord(v, pos, neg) {
+    var h = v === 0 ? "" : (v < 0 ? neg : pos);
+    var a = Math.round(Math.abs(v) * 100) / 100;
+    if (a === Math.floor(a)) a = Math.floor(a);
+    return a + h;
+  }
+
+  function formatLon(lon) {
+    return formatCoord(lon, "E", "W");
+  }
+
   function formatFix(lat, lon) {
-    var ns = lat === 0 ? "" : (lat < 0 ? "S" : "N");
-    var ew = lon === 0 ? "" : (lon < 0 ? "W" : "E");
-    return Math.abs(lat) + ns + " " + Math.abs(lon) + ew;
+    return formatCoord(lat, "N", "S") + " " + formatCoord(lon, "E", "W");
   }
 
   // Projection center, cached once per draw so project() avoids recomputing the
@@ -323,34 +307,44 @@
 
   function drawHeader(d) {
     var w = screen.getWidth ? screen.getWidth() : 480;
+    var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.reset().clear();
+    screen.setColor(1);
+    screen.drawRect(22, 6, w - 23, hgt - 8);
+    screen.drawLine(22, 34, w - 23, 34);
+    screen.drawLine(22, 58, w - 23, 58);
     screen.setColor(3);
-    setMono().setFontAlign(-1, -1).drawString("ROBCO GLOBE", MARGIN, 8);
+    setMono().setFontAlign(-1, -1).drawString("ROBCO INDUSTRIES (TM)", MARGIN, 8);
     setMono().setFontAlign(1, -1).drawString(formatTime(d), w - MARGIN, 8);
-    screen.drawLine(0, 32, w, 32);
-    setMono().setFontAlign(0, -1).drawString("GLOBE", w / 2, 36);
+    screen.setColor(1);
+    setMono().setFontAlign(-1, -1).drawString("TERMLINK ORBITAL MAP", MARGIN, 36);
+    setMono().setFontAlign(1, -1).drawString("TZ " + (worldIndex + 1) + "/" + zones.length, w - MARGIN, 36);
   }
 
   function drawFooter() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
-    screen.drawLine(0, hgt - 32, w, hgt - 32);
-    setMono().setFontAlign(-1, -1).drawString("K1 ZONES", MARGIN, hgt - 24);
-    setMono().setFontAlign(1, -1).drawString("K2 ZONES", w - MARGIN, hgt - 24);
+    screen.drawLine(22, hgt - 34, w - 23, hgt - 34);
+    setMono().setFontAlign(-1, -1).drawString("K1 TZ BAND +/-", MARGIN, hgt - 24);
+    setMono().setFontAlign(1, -1).drawString("K2 TZ BAND +/-", w - MARGIN, hgt - 24);
   }
 
   function draw() {
     if (!screen) return;
     var utc = nowMs();
-    var z = zones[worldIndex];
-    var zd = zoneDate(worldIndex, utc);
+    var zi = safeZone(worldIndex);
+    worldIndex = zi;
+    var label = zoneAbbr(zi, utc);
+    var lon = zoneLon(zi);
+    var lat = 0;
+    var zd = zoneDate(zi, utc);
     var cx = 150, cy = 166, r = 104;
     var i;
-    setSun(z[6], z[5], utc);
+    setSun(lat, lon, utc);
     var elev = Math.asin(Math.max(-1, Math.min(1, sunZ))) * 180 / Math.PI;
     var phase = elev >= 0 ? "DAYLIGHT" : (elev >= -12 ? "TWILIGHT" : "NIGHT");
-    setCenter(z[6], z[5]);
+    setCenter(lat, lon);
     drawHeader(zd);
     screen.setColor(3);
     screen.drawCircle(cx, cy, r);
@@ -358,8 +352,10 @@
     screen.setColor(1);
     for (i = -60; i <= 60; i += 30) drawParallel(cx, cy, r, i);
     for (i = -180; i < 180; i += 30) drawMeridian(cx, cy, r, i);
-    drawMeridian(cx, cy, r, wrapLon((zoneOffset(worldIndex, utc) / 60) * 15));
+    drawMeridian(cx, cy, r, wrapLon(lon - 7.5));
+    drawMeridian(cx, cy, r, wrapLon(lon + 7.5));
     screen.setColor(3);
+    drawMeridian(cx, cy, r, lon);
     drawCoast(cx, cy, r);
     drawTerminator(cx, cy, r);
     screen.setColor(3);
@@ -369,15 +365,19 @@
     line(cx, cy - 9, cx, cy - 3);
     line(cx, cy + 3, cx, cy + 9);
     if (sunZ > 0) screen.drawCircle(cx + (sunX * r), cy - (sunY * r), 3);
-    setMono().setFontAlign(0, -1).drawString("ROBCO ORBITAL RELAY", 348, 72);
+    setMono().setFontAlign(0, -1).drawString("ROBCO TZ RELAY", 348, 72);
     screen.setColor(1);
     screen.drawRect(272, 96, 430, 280);
-    setMono().setFontAlign(0, -1).drawString(z[0] + " " + zoneAbbr(worldIndex, utc), 351, 112);
+    screen.drawLine(272, 122, 430, 122);
+    setMono().setFontAlign(0, -1).drawString(label, 351, 102);
+    screen.setColor(3);
     setVector(30).setFontAlign(0, 0).drawString(formatTime(zd), 351, 154);
+    screen.setColor(1);
     setMono().setFontAlign(0, -1).drawString(monthNames[zd.month] + " " + zd.date, 351, 188);
-    setMono().setFontAlign(0, -1).drawString("FIX " + formatFix(z[6], z[5]), 351, 220);
+    setMono().setFontAlign(0, -1).drawString("MERIDIAN " + formatLon(lon), 351, 214);
+    setMono().setFontAlign(0, -1).drawString("BAND " + (zi + 1) + "/" + zones.length, 351, 238);
     screen.setColor(elev >= 0 ? 3 : 1);
-    setMono().setFontAlign(0, -1).drawString(phase + " " + (elev >= 0 ? "+" : "-") + Math.round(Math.abs(elev)), 351, 254);
+    setMono().setFontAlign(0, -1).drawString(phase + " " + (elev >= 0 ? "+" : "-") + Math.round(Math.abs(elev)), 351, 260);
     drawFooter();
     if (screen.flip) screen.flip();
   }
@@ -390,14 +390,17 @@
   }
 
   function rotate(dir) {
+    dir = dir | 0;
     if (dir !== 0) {
-      worldIndex = wrap(worldIndex + dir, zones.length);
+      worldIndex = wrap(safeZone(worldIndex) + dir, zones.length);
       sound("CLICK");
       safeDraw();
     } else {
       sound("OK");
     }
   }
+
+  worldIndex = localZoneIndex();
 
   if (typeof Pip !== "undefined") {
     Pip.on("knob1", rotate);
