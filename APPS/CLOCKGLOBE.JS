@@ -4,6 +4,8 @@
   var ticker;
   // Inset for content near the rounded-corner bezel so nothing is clipped.
   var MARGIN = 32;
+  var MS_PER_MIN = 60000;
+  var MS_PER_DAY = 86400000;
   var worldIndex = 1;
   var monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
   var zones = [
@@ -68,40 +70,101 @@
     }
   }
 
+  function isLeapYear(year) {
+    return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  }
+
+  function daysInMonth(year, month) {
+    if (month === 1) return isLeapYear(year) ? 29 : 28;
+    return month === 3 || month === 5 || month === 8 || month === 10 ? 30 : 31;
+  }
+
+  function leapDaysBeforeYear(year) {
+    year--;
+    return Math.floor(year / 4) - Math.floor(year / 100) + Math.floor(year / 400);
+  }
+
+  function daysBeforeYear(year) {
+    return ((year - 1970) * 365) + leapDaysBeforeYear(year) - leapDaysBeforeYear(1970);
+  }
+
+  function daysBeforeMonth(year, month) {
+    var m, days = 0;
+    for (m = 0; m < month; m++) days += daysInMonth(year, m);
+    return days;
+  }
+
+  function utcMs(year, month, day, hour) {
+    return ((daysBeforeYear(year) + daysBeforeMonth(year, month) + day - 1) * MS_PER_DAY) + (hour * 3600000);
+  }
+
+  function dayOfWeek(year, month, day) {
+    return wrap(daysBeforeYear(year) + daysBeforeMonth(year, month) + day - 1 + 4, 7);
+  }
+
+  function fieldsFromUtc(ms) {
+    var dayCount = Math.floor(ms / MS_PER_DAY);
+    var rem = ms - (dayCount * MS_PER_DAY);
+    var year, dayOfYear, month, dim;
+    if (rem < 0) {
+      rem += MS_PER_DAY;
+      dayCount--;
+    }
+    year = 1970 + Math.floor(dayCount / 365.2425);
+    while (dayCount < daysBeforeYear(year)) year--;
+    while (dayCount >= daysBeforeYear(year + 1)) year++;
+    dayOfYear = dayCount - daysBeforeYear(year);
+    month = 0;
+    while (month < 11) {
+      dim = daysInMonth(year, month);
+      if (dayOfYear < dim) break;
+      dayOfYear -= dim;
+      month++;
+    }
+    return {
+      year: year,
+      month: month,
+      date: dayOfYear + 1,
+      day: wrap(dayCount + 4, 7),
+      hour: Math.floor(rem / 3600000),
+      minute: Math.floor((rem % 3600000) / MS_PER_MIN),
+      second: Math.floor((rem % MS_PER_MIN) / 1000)
+    };
+  }
+
   function nthSunday(year, month, nth) {
-    var d = new Date(Date.UTC(year, month, 1));
-    return 1 + ((7 - d.getUTCDay()) % 7) + ((nth - 1) * 7);
+    return 1 + ((7 - dayOfWeek(year, month, 1)) % 7) + ((nth - 1) * 7);
   }
 
   function lastSunday(year, month) {
-    var d = new Date(Date.UTC(year, month + 1, 0));
-    return d.getUTCDate() - d.getUTCDay();
+    var d = daysInMonth(year, month);
+    return d - dayOfWeek(year, month, d);
   }
 
   function transitionUtc(year, month, day, hour, offsetMinutes) {
-    return Date.UTC(year, month, day, hour, 0, 0) - (offsetMinutes * 60000);
+    return utcMs(year, month, day, hour) - (offsetMinutes * MS_PER_MIN);
   }
 
   function zoneIsDst(i, utc) {
     var z = zones[i];
     var y;
     if (z[2] === 1) {
-      y = (new Date(utc + (z[1] * 60000))).getUTCFullYear();
+      y = fieldsFromUtc(utc + (z[1] * MS_PER_MIN)).year;
       return utc >= transitionUtc(y, 2, nthSunday(y, 2, 2), 2, z[1]) &&
         utc < transitionUtc(y, 10, nthSunday(y, 10, 1), 2, z[1] + 60);
     }
     if (z[2] === 2) {
-      y = (new Date(utc)).getUTCFullYear();
-      return utc >= Date.UTC(y, 2, lastSunday(y, 2), 1, 0, 0) &&
-        utc < Date.UTC(y, 9, lastSunday(y, 9), 1, 0, 0);
+      y = fieldsFromUtc(utc).year;
+      return utc >= utcMs(y, 2, lastSunday(y, 2), 1) &&
+        utc < utcMs(y, 9, lastSunday(y, 9), 1);
     }
     if (z[2] === 3) {
-      y = (new Date(utc + (z[1] * 60000))).getUTCFullYear();
+      y = fieldsFromUtc(utc + (z[1] * MS_PER_MIN)).year;
       return utc >= transitionUtc(y, 9, nthSunday(y, 9, 1), 2, z[1]) ||
         utc < transitionUtc(y, 3, nthSunday(y, 3, 1), 3, z[1] + 60);
     }
     if (z[2] === 4) {
-      y = (new Date(utc + (z[1] * 60000))).getUTCFullYear();
+      y = fieldsFromUtc(utc + (z[1] * MS_PER_MIN)).year;
       return utc >= transitionUtc(y, 8, lastSunday(y, 8), 2, z[1]) ||
         utc < transitionUtc(y, 3, nthSunday(y, 3, 1), 3, z[1] + 60);
     }
@@ -117,11 +180,11 @@
   }
 
   function zoneDate(i, utc) {
-    return new Date(utc + (zoneOffset(i, utc) * 60000));
+    return fieldsFromUtc(utc + (zoneOffset(i, utc) * MS_PER_MIN));
   }
 
   function formatTime(d) {
-    return pad2(d.getUTCHours()) + ":" + pad2(d.getUTCMinutes());
+    return pad2(d.hour) + ":" + pad2(d.minute);
   }
 
   function formatFix(lat, lon) {
@@ -166,10 +229,10 @@
   }
 
   function setSun(centerLat, centerLon, utc) {
-    var d = new Date(utc);
-    var n = Math.floor((d.getTime() - Date.UTC(d.getUTCFullYear(), 0, 1)) / 86400000) + 1;
+    var d = fieldsFromUtc(utc);
+    var n = daysBeforeMonth(d.year, d.month) + d.date;
     var dec = -23.44 * Math.PI / 180 * Math.cos(2 * Math.PI * (n + 10) / 365.24);
-    var ut = d.getUTCHours() + (d.getUTCMinutes() / 60) + (d.getUTCSeconds() / 3600);
+    var ut = d.hour + (d.minute / 60) + (d.second / 3600);
     var dl = wrapLon(((12 - ut) * 15) - centerLon) * Math.PI / 180;
     var p0 = centerLat * Math.PI / 180;
     sunX = Math.cos(dec) * Math.sin(dl);
@@ -254,7 +317,7 @@
     screen.drawRect(272, 96, 430, 280);
     setMono().setFontAlign(0, -1).drawString(z[0] + " " + zoneAbbr(worldIndex, utc), 351, 112);
     setVector(30).setFontAlign(0, 0).drawString(formatTime(zd), 351, 154);
-    setMono().setFontAlign(0, -1).drawString(monthNames[zd.getUTCMonth()] + " " + zd.getUTCDate(), 351, 188);
+    setMono().setFontAlign(0, -1).drawString(monthNames[zd.month] + " " + zd.date, 351, 188);
     setMono().setFontAlign(0, -1).drawString("FIX " + formatFix(z[6], z[5]), 351, 220);
     screen.setColor(elev >= 0 ? 3 : 1);
     setMono().setFontAlign(0, -1).drawString(phase + " " + (elev >= 0 ? "+" : "-") + Math.round(Math.abs(elev)), 351, 254);
