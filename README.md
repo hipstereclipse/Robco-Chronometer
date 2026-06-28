@@ -139,14 +139,13 @@ A few pieces are worth calling out:
 
 ### Browser installer
 
-From a local clone or downloaded copy, open [`install.html`](install.html) in Chrome or Edge,
-select the mounted microSD card root, and let it install the files listed in
-`APPINFO/CLOCK.info` from the current `main` branch. Eject the device before unplugging it.
+From a local clone or downloaded copy, open [`install.html`](install.html) in Chrome or Edge.
+By default it installs the files listed in `APPINFO/CLOCK.info` from GitHub `main`. To install
+directly from the clone on disk, click **Use local files** first and select the repository root,
+then select the mounted microSD card root. Eject the device before unplugging it.
 
-The browser installer downloads from GitHub `main`, not from your local working tree. If your
-clone contains unpublished changes, push them first or use the manual install steps below;
-otherwise the device may receive an older all-in-one build that can hit
-`CALLBACK`/`LOW_MEMORY`/`MEMORY`.
+Use the local-source option when your clone contains unpublished changes or GitHub is serving an
+older payload. Installing an older all-in-one build can hit `CALLBACK`/`LOW_MEMORY`/`MEMORY`.
 
 ### Manual install
 

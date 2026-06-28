@@ -90,19 +90,20 @@
     var w = screen.getWidth ? screen.getWidth() : 480;
     screen.reset().clear();
     screen.setColor(3);
-    setMono().setFontAlign(-1, -1).drawString("ROBCO CLOCK", 8, 6);
-    setMono().setFontAlign(1, -1).drawString(formatTime(d, false), w - 8, 6);
-    screen.drawLine(0, 32, w, 32);
-    setMono().setFontAlign(0, -1).drawString(layouts[clockLayout], w / 2, 36);
+    setMono().setFontAlign(-1, -1).drawString("ROBCO CLOCK", 22, 10);
+    setMono().setFontAlign(1, -1).drawString(formatTime(d, false), w - 22, 10);
+    screen.drawLine(18, 38, w - 18, 38);
+    setMono().setFontAlign(0, -1).drawString(layouts[clockLayout], w / 2, 42);
   }
 
   function drawFooter() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
+    var y = hgt - 32;
     screen.setColor(1);
-    screen.drawLine(0, hgt - 29, w, hgt - 29);
-    setMono().setFontAlign(-1, -1).drawString("K1 LAYOUT/SEC", 8, hgt - 22);
-    setMono().setFontAlign(1, -1).drawString("K2 12H/24H", w - 8, hgt - 22);
+    screen.drawLine(18, y - 8, w - 18, y - 8);
+    setMono().setFontAlign(-1, -1).drawString("K1 LAYOUT/SEC", 22, y);
+    setMono().setFontAlign(1, -1).drawString("K2 12H/24H", w - 22, y);
   }
 
   function drawRail() {

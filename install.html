@@ -340,12 +340,13 @@
 
       <div class="content">
         <h1 id="title">Install to Pip-Boy</h1>
-        <p class="lede">Select the mounted microSD card root. The installer removes older Clock Suite files, downloads the current RobCo app suite from GitHub, and writes the separate app entries into the device folders.</p>
+        <p class="lede">Select the mounted microSD card root. The installer removes older Clock Suite files, loads the current RobCo app suite from GitHub or a local repo folder, and writes the separate app entries into the device folders.</p>
 
         <div class="notice" id="supportNotice"></div>
 
         <div class="actions">
           <button class="button primary" id="installButton" type="button">Select microSD and install</button>
+          <button class="button secondary" id="localSourceButton" type="button">Use local files</button>
           <button class="button secondary" id="checkButton" type="button">Check source</button>
         </div>
 
@@ -413,6 +414,7 @@
       var rawBase = "https://raw.githubusercontent.com/" +
         repo.owner + "/" + repo.name + "/" + repo.branch + "/";
       var cacheToken = "init-" + Date.now();
+      var localSourceHandle = null;
       var cleanupPaths = [
         "APPINFO/CLOCK.info",
         "APPINFO/WORLD.info",
@@ -443,6 +445,7 @@
       ];
 
       var installButton = document.getElementById("installButton");
+      var localSourceButton = document.getElementById("localSourceButton");
       var checkButton = document.getElementById("checkButton");
       var supportNotice = document.getElementById("supportNotice");
       var logNode = document.getElementById("log");
@@ -453,7 +456,31 @@
       var progressBar = document.getElementById("progressBar");
       var payloadList = document.getElementById("payloadList");
 
-      sourceLabel.textContent = repo.owner + "/" + repo.name + "@" + repo.branch + " (v" + minimumPayloadVersion + "+)";
+      function githubSourceText() {
+        return repo.owner + "/" + repo.name + "@" + repo.branch + " (v" + minimumPayloadVersion + "+)";
+      }
+
+      function updateSourceLabel() {
+        sourceLabel.textContent = localSourceHandle ?
+          "Local: " + (localSourceHandle.name || "selected folder") :
+          githubSourceText();
+      }
+
+      function activeSourceName() {
+        return localSourceHandle ? "local files" : "GitHub";
+      }
+
+      function canPickDirectories() {
+        return "showDirectoryPicker" in window;
+      }
+
+      function setBusy(busy) {
+        installButton.disabled = busy || !canPickDirectories();
+        localSourceButton.disabled = busy || !canPickDirectories();
+        checkButton.disabled = busy;
+      }
+
+      updateSourceLabel();
 
       function setStatus(text) {
         statusPill.textContent = text;
@@ -495,12 +522,12 @@
         return 0;
       }
 
-      function validatePayloadVersion(manifest) {
+      function validatePayloadVersion(manifest, sourceName) {
         if (compareVersions(manifest && manifest.version, minimumPayloadVersion) >= 0) return;
         throw new Error(
-          "GitHub payload is v" + (manifest && manifest.version ? manifest.version : "unknown") +
+          sourceName + " payload is v" + (manifest && manifest.version ? manifest.version : "unknown") +
           ", but this installer requires v" + minimumPayloadVersion +
-          "+. Push the split-app payload to GitHub or manually copy the local files before installing."
+          "+. Use local files from this repo or push the split-app payload to GitHub before installing."
         );
       }
 
@@ -565,7 +592,7 @@
         return blob;
       }
 
-      async function fetchManifest() {
+      async function fetchGitHubManifest() {
         updateCacheToken("manifest");
         var response = await fetch(rawUrl(manifestPath), { cache: "no-store" });
         if (!response.ok) {
@@ -573,7 +600,7 @@
         }
         var text = await response.text();
         var manifest = JSON.parse(text);
-        validatePayloadVersion(manifest);
+        validatePayloadVersion(manifest, "GitHub");
         var files = splitManifestFiles(manifest);
         updatePayloadVersion(manifest);
         updateCacheToken(manifest.version);
@@ -584,8 +611,7 @@
         };
       }
 
-      async function fetchPayload(onFile) {
-        var info = await fetchManifest();
+      async function buildPayload(info, loadBlob, onFile) {
         var blobs = {};
         blobs[manifestPath] = info.manifestBlob;
         renderPayload(info.files);
@@ -603,6 +629,69 @@
           files: info.files,
           blobs: blobs
         };
+      }
+
+      async function fetchGitHubPayload(onFile) {
+        return buildPayload(await fetchGitHubManifest(), fetchBlob, onFile);
+      }
+
+      async function getLocalFileHandle(path) {
+        if (!localSourceHandle) {
+          throw new Error("Select a local source folder first.");
+        }
+        validateRelativePath(path);
+        var parts = path.split("/");
+        var filename = parts.pop();
+        var directory = await openDirectory(localSourceHandle, parts);
+        if (!directory) {
+          throw new Error("Missing local folder for " + path);
+        }
+        try {
+          return await directory.getFileHandle(filename);
+        } catch (error) {
+          throw new Error("Missing local file: " + path);
+        }
+      }
+
+      async function readLocalText(path) {
+        try {
+          return await (await (await getLocalFileHandle(path)).getFile()).text();
+        } catch (error) {
+          if (error && /^Missing local /.test(error.message || "")) throw error;
+          throw new Error("Could not read local file: " + path);
+        }
+      }
+
+      async function readLocalBlob(path) {
+        var file;
+        try {
+          file = await (await getLocalFileHandle(path)).getFile();
+        } catch (error) {
+          if (error && /^Missing local /.test(error.message || "")) throw error;
+          throw new Error("Could not read local file: " + path);
+        }
+        return file.type ? file : file.slice(0, file.size, guessContentType(path));
+      }
+
+      async function fetchLocalManifest() {
+        var text = await readLocalText(manifestPath);
+        var manifest = JSON.parse(text);
+        validatePayloadVersion(manifest, "Local");
+        var files = splitManifestFiles(manifest);
+        updatePayloadVersion(manifest);
+        return {
+          manifest: manifest,
+          files: files,
+          manifestBlob: new Blob([text], { type: "application/json" })
+        };
+      }
+
+      async function fetchLocalPayload(onFile) {
+        return buildPayload(await fetchLocalManifest(), readLocalBlob, onFile);
+      }
+
+      async function fetchPayload(onFile) {
+        return localSourceHandle ? fetchLocalPayload(onFile) : fetchGitHubPayload(onFile);
       }
 
       async function ensureDirectory(root, parts) {
@@ -678,18 +767,26 @@
         if (paths.indexOf(path) === -1) paths.push(path);
       }
 
-      async function ensureReadWritePermission(handle) {
+      async function ensureDirectoryPermission(handle, mode) {
         if (!handle || !handle.queryPermission) return;
-        var options = { mode: "readwrite" };
+        var options = { mode: mode };
         var state = await handle.queryPermission(options);
         if (state === "granted") return;
         if (!handle.requestPermission) {
-          throw new Error("Write permission was not granted for the selected folder.");
+          throw new Error("Permission was not granted for the selected folder.");
         }
         state = await handle.requestPermission(options);
         if (state !== "granted") {
-          throw new Error("Write permission was not granted for the selected folder.");
+          throw new Error("Permission was not granted for the selected folder.");
         }
+      }
+
+      async function ensureReadPermission(handle) {
+        await ensureDirectoryPermission(handle, "read");
+      }
+
+      async function ensureReadWritePermission(handle) {
+        await ensureDirectoryPermission(handle, "readwrite");
       }
 
       function manifestLooksRelated(text) {
@@ -790,28 +887,76 @@
         });
       }
 
+      async function chooseSourceDirectory() {
+        return window.showDirectoryPicker({
+          id: "robco-chronometer-source-root",
+          mode: "read",
+          startIn: "desktop"
+        });
+      }
+
+      async function selectLocalSource() {
+        if (!canPickDirectories()) {
+          showNotice("Local files require Chrome or Edge with folder access.");
+          return;
+        }
+
+        var previousSource = localSourceHandle;
+        setStatus("Source");
+        setBusy(true);
+        setProgress(0, 1);
+        resetLog("Select the local RobCo Chronometer repo folder.");
+
+        try {
+          var directory = await chooseSourceDirectory();
+          await ensureReadPermission(directory);
+          localSourceHandle = directory;
+          updateSourceLabel();
+          log("Source: " + sourceLabel.textContent);
+
+          var payload = await fetchLocalPayload(function(path, done, total) {
+            log("OK " + path);
+            setProgress(done, total);
+          });
+          setStatus("Ready");
+          log("Local source ready: " + payload.manifest.name + " v" + payload.manifest.version);
+        } catch (error) {
+          localSourceHandle = previousSource;
+          updateSourceLabel();
+          if (error && error.name === "AbortError") {
+            setStatus("Ready");
+            log("Local source selection canceled.");
+          } else {
+            setStatus("Error");
+            log("ERROR: " + (error && error.message ? error.message : error));
+          }
+        } finally {
+          setBusy(false);
+        }
+      }
+
       async function install() {
-        if (!("showDirectoryPicker" in window)) {
+        if (!canPickDirectories()) {
           showNotice("This installer needs Chrome or Edge with folder write access.");
           return;
         }
 
         setStatus("Select");
-        installButton.disabled = true;
-        checkButton.disabled = true;
+        setBusy(true);
         setProgress(0, 1);
         resetLog("Select the mounted microSD card root in the file picker.");
+        log("Source: " + sourceLabel.textContent);
 
         try {
           var directory = await chooseDirectory();
           await ensureReadWritePermission(directory);
           targetLabel.textContent = directory.name || "Selected folder";
-          setStatus("Fetch");
+          setStatus(localSourceHandle ? "Load" : "Fetch");
           log("Target: " + targetLabel.textContent);
           await checkDeviceShape(directory);
 
           var payload = await fetchPayload(function(path, done, total) {
-            log("Downloaded " + path);
+            log("Loaded " + path);
             setProgress(done, total * 2);
           });
           log("Payload: " + payload.manifest.name + " v" + payload.manifest.version);
@@ -838,17 +983,16 @@
             log("ERROR: " + (error && error.message ? error.message : error));
           }
         } finally {
-          installButton.disabled = false;
-          checkButton.disabled = false;
+          setBusy(false);
         }
       }
 
       async function checkSource() {
-        setStatus("Fetch");
-        checkButton.disabled = true;
-        installButton.disabled = true;
+        setStatus(localSourceHandle ? "Load" : "Fetch");
+        setBusy(true);
         setProgress(0, 1);
-        resetLog("Checking GitHub payload.");
+        resetLog("Checking " + activeSourceName() + " source.");
+        log("Source: " + sourceLabel.textContent);
         try {
           var payload = await fetchPayload(function(path, done, total) {
             log("OK " + path);
@@ -860,19 +1004,20 @@
           setStatus("Error");
           log("ERROR: " + (error && error.message ? error.message : error));
         } finally {
-          checkButton.disabled = false;
-          installButton.disabled = false;
+          setBusy(false);
         }
       }
 
       if (!window.isSecureContext) {
         showNotice("Open this page from HTTPS, localhost, or a browser that treats local files as secure.");
-      } else if (!("showDirectoryPicker" in window)) {
+      } else if (!canPickDirectories()) {
         showNotice("Folder install requires Chrome or Edge. Other browsers can read this page but cannot write to the microSD card.");
         installButton.disabled = true;
+        localSourceButton.disabled = true;
       }
 
       installButton.addEventListener("click", install);
+      localSourceButton.addEventListener("click", selectLocalSource);
       checkButton.addEventListener("click", checkSource);
     }());
   </script>
