@@ -6,12 +6,16 @@
   var MARGIN = 32;
   var MS_PER_MIN = 60000;
   var MS_PER_DAY = 86400000;
-  var worldIndex = 14;
+  var worldIndex = 12;
   var monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-  // Civil UTC offsets in active use, including half-hour and quarter-hour bands.
-  // The globe centers on each zone's standard meridian instead of a sample city.
-  var zones = [-720, -660, -600, -570, -540, -480, -420, -360, -300, -240, -210, -180, -120, -60, 0, 60, 120, 180, 210, 240, 270, 300, 330, 345, 360, 390, 420, 480, 525, 540, 570, 600, 630, 660, 720, 765, 780, 825, 840];
+  // Whole-hour UTC bands only. The globe centers on each band meridian.
+  var zones = [-720, -660, -600, -540, -480, -420, -360, -300, -240, -180, -120, -60, 0, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 780, 840];
+  var zoneNames = ["BAKER", "PAGO PAGO", "HONOLULU", "ANCHORAGE", "LOS ANGELES", "DENVER", "CHICAGO", "NEW YORK", "SANTIAGO", "BUENOS AIRES", "S. GEORGIA", "AZORES", "LONDON", "PARIS", "CAIRO", "MOSCOW", "DUBAI", "KARACHI", "DHAKA", "BANGKOK", "BEIJING", "TOKYO", "SYDNEY", "NOUMEA", "AUCKLAND", "APIA", "KIRITIMATI"];
   var px = 0, py = 0, sunX = 0, sunY = 0, sunZ = 0;
+  var DEG = Math.PI / 180;
+  var termC = [];
+  var termS = [];
+  var landFast = null;
 
   function nowMs() {
     return (new Date()).getTime();
@@ -51,6 +55,35 @@
       setMono();
     }
     return screen;
+  }
+
+  function textWidth(text) {
+    text = String(text);
+    try {
+      if (screen.stringWidth) return screen.stringWidth(text);
+    } catch (e) {
+    }
+    return text.length * 12;
+  }
+
+  function fitText(text, maxW) {
+    text = String(text);
+    while (text.length > 0 && textWidth(text) > maxW) text = text.substring(0, text.length - 1);
+    return text;
+  }
+
+  function drawFit(text, x, y, maxW, align) {
+    screen.setFontAlign(align, -1).drawString(fitText(text, maxW), x, y);
+  }
+
+  function drawVectorFit(text, x, y, maxW, maxSize, minSize, yAlign) {
+    var size;
+    text = String(text);
+    for (size = maxSize; size >= minSize; size -= 2) {
+      setVector(size);
+      if (textWidth(text) <= maxW) break;
+    }
+    screen.setFontAlign(0, yAlign).drawString(text, x, y);
   }
 
   function sound(id) {
@@ -117,7 +150,7 @@
   function localZoneIndex() {
     var d = new Date();
     var local = d.getTimezoneOffset ? -d.getTimezoneOffset() : 0;
-    var best = 14;
+    var best = 12;
     var diff = 9999;
     var i;
     for (i = 0; i < zones.length; i++) {
@@ -150,6 +183,10 @@
     return formatOffset(zoneOffset(i, utc));
   }
 
+  function zoneName(i) {
+    return zoneNames[safeZone(i)];
+  }
+
   function zoneDate(i, utc) {
     return fieldsFromUtc(utc + (zoneOffset(i, utc) * MS_PER_MIN));
   }
@@ -177,50 +214,53 @@
     return formatCoord(lat, "N", "S") + " " + formatCoord(lon, "E", "W");
   }
 
-  // Projection center, cached once per draw so project() avoids recomputing the
-  // center's sin/cos (and any trig at all for it) for every one of the hundreds
-  // of graticule/coastline points -- that redundant trig was the redraw stall.
-  var ctrLon = 0, sinP0 = 0, cosP0 = 1;
+  // The globe is always equator-centered; projection can therefore skip the
+  // general oblique math and cull by longitude before drawing.
+  var ctrLon = 0;
 
   function setCenter(centerLat, centerLon) {
-    var p0 = centerLat * Math.PI / 180;
     ctrLon = centerLon;
-    sinP0 = Math.sin(p0);
-    cosP0 = Math.cos(p0);
   }
 
   function project(cx, cy, r, lon, lat) {
-    var dlon = wrapLon(lon - ctrLon) * Math.PI / 180;
-    var phi = lat * Math.PI / 180;
-    var sphi = Math.sin(phi), cphi = Math.cos(phi);
-    var cdl = Math.cos(dlon), sdl = Math.sin(dlon);
-    var cosc = (sinP0 * sphi) + (cosP0 * cphi * cdl);
-    if (cosc < 0) return false;
-    px = cx + (r * cphi * sdl);
-    py = cy - (r * ((cosP0 * sphi) - (sinP0 * cphi * cdl)));
+    var d = wrapLon(lon - ctrLon);
+    var phi;
+    if (d < -90 || d > 90) return false;
+    phi = lat * DEG;
+    px = cx + (r * Math.cos(phi) * Math.sin(d * DEG));
+    py = cy - (r * Math.sin(phi));
+    return true;
+  }
+
+  function projectUnit(cx, cy, r, lon, cosLat, sinLat) {
+    var d = wrapLon(lon - ctrLon);
+    if (d < -90 || d > 90) return false;
+    px = cx + (r * cosLat * Math.sin(d * DEG));
+    py = cy - (r * sinLat);
     return true;
   }
 
   function drawMeridian(cx, cy, r, lon) {
-    var lat, have = false, lx = 0, ly = 0;
-    for (lat = -90; lat <= 90; lat += 10) {
-      if (project(cx, cy, r, lon, lat)) {
-        if (have) line(lx, ly, px, py);
-        lx = px; ly = py; have = true;
-      } else {
-        have = false;
-      }
+    var lat, lx = 0, ly = 0, d = wrapLon(lon - ctrLon), sd;
+    if (d < -90 || d > 90) return;
+    sd = Math.sin(d * DEG);
+    for (lat = -90; lat <= 90; lat += 15) {
+      var phi = lat * DEG;
+      px = cx + (r * Math.cos(phi) * sd);
+      py = cy - (r * Math.sin(phi));
+      if (lat > -90) line(lx, ly, px, py);
+      lx = px; ly = py;
     }
   }
 
   function drawParallel(cx, cy, r, lat) {
     var lon, have = false, lx = 0, ly = 0;
-    for (lon = ctrLon - 180; lon <= ctrLon + 180; lon += 10) {
-      if (project(cx, cy, r, lon, lat)) {
+    var phi = lat * DEG;
+    var cl = Math.cos(phi), sl = Math.sin(phi);
+    for (lon = ctrLon - 90; lon <= ctrLon + 90; lon += 15) {
+      if (projectUnit(cx, cy, r, lon, cl, sl)) {
         if (have) line(lx, ly, px, py);
         lx = px; ly = py; have = true;
-      } else {
-        have = false;
       }
     }
   }
@@ -250,13 +290,29 @@
     [-180,-68,-160,-71,-135,-70,-110,-73,-80,-71,-55,-74,-25,-71,0,-70,32,-73,62,-70,95,-72,130,-69,160,-72,180,-68]
   ];
 
-  function drawCoast(cx, cy, r) {
-    var s, i, pts, have, lx = 0, ly = 0;
+  function prepLand() {
+    var s, i, pts, out, lat;
+    if (landFast) return;
+    landFast = [];
     for (s = 0; s < land.length; s++) {
       pts = land[s];
-      have = false;
+      out = [];
       for (i = 0; i < pts.length; i += 2) {
-        if (project(cx, cy, r, pts[i], pts[i + 1])) {
+        lat = pts[i + 1] * DEG;
+        out.push(pts[i], Math.cos(lat), Math.sin(lat));
+      }
+      landFast.push(out);
+    }
+  }
+
+  function drawCoast(cx, cy, r) {
+    var s, i, pts, have, lx = 0, ly = 0;
+    prepLand();
+    for (s = 0; s < landFast.length; s++) {
+      pts = landFast[s];
+      have = false;
+      for (i = 0; i < pts.length; i += 3) {
+        if (projectUnit(cx, cy, r, pts[i], pts[i + 1], pts[i + 2])) {
           if (have) line(lx, ly, px, py);
           lx = px; ly = py; have = true;
         } else {
@@ -269,13 +325,21 @@
   function setSun(centerLat, centerLon, utc) {
     var d = fieldsFromUtc(utc);
     var n = daysBeforeMonth(d.year, d.month) + d.date;
-    var dec = -23.44 * Math.PI / 180 * Math.cos(2 * Math.PI * (n + 10) / 365.24);
+    var dec = -23.44 * DEG * Math.cos(2 * Math.PI * (n + 10) / 365.24);
     var ut = d.hour + (d.minute / 60) + (d.second / 3600);
-    var dl = wrapLon(((12 - ut) * 15) - centerLon) * Math.PI / 180;
-    var p0 = centerLat * Math.PI / 180;
+    var dl = wrapLon(((12 - ut) * 15) - centerLon) * DEG;
     sunX = Math.cos(dec) * Math.sin(dl);
-    sunY = (Math.cos(p0) * Math.sin(dec)) - (Math.sin(p0) * Math.cos(dec) * Math.cos(dl));
-    sunZ = (Math.sin(p0) * Math.sin(dec)) + (Math.cos(p0) * Math.cos(dec) * Math.cos(dl));
+    sunY = Math.sin(dec);
+    sunZ = Math.cos(dec) * Math.cos(dl);
+  }
+
+  function prepTerminator() {
+    var th;
+    if (termC.length) return;
+    for (th = 0; th <= 360; th += 10) {
+      termC.push(Math.cos(th * DEG));
+      termS.push(Math.sin(th * DEG));
+    }
   }
 
   function drawTerminator(cx, cy, r) {
@@ -283,16 +347,17 @@
     var ay = 0;
     var az = sunX;
     var m = Math.sqrt((ax * ax) + (az * az));
-    var th, have = false, lx = 0, ly = 0;
+    var i, have = false, lx = 0, ly = 0;
     if (m < 1e-6) { ax = 1; az = 0; m = 1; }
     ax /= m; az /= m;
     var bx = sunY * az;
     var by = (sunZ * ax) - (sunX * az);
     var bz = -sunY * ax;
+    prepTerminator();
     screen.setColor(3);
-    for (th = 0; th <= 360; th += 8) {
-      var c = Math.cos(th * Math.PI / 180);
-      var s = Math.sin(th * Math.PI / 180);
+    for (i = 0; i < termC.length; i++) {
+      var c = termC[i];
+      var s = termS[i];
       var pz = (az * c) + (bz * s);
       if (pz < 0) {
         have = false;
@@ -314,11 +379,13 @@
     screen.drawLine(22, 34, w - 23, 34);
     screen.drawLine(22, 58, w - 23, 58);
     screen.setColor(3);
-    setMono().setFontAlign(-1, -1).drawString("ROBCO INDUSTRIES (TM)", MARGIN, 8);
-    setMono().setFontAlign(1, -1).drawString(formatTime(d), w - MARGIN, 8);
+    setMono();
+    drawFit("ROBCO INDUSTRIES (TM)", MARGIN, 8, 260, -1);
+    drawFit(formatTime(d), w - MARGIN, 8, 90, 1);
     screen.setColor(1);
-    setMono().setFontAlign(-1, -1).drawString("TERMLINK ORBITAL MAP", MARGIN, 36);
-    setMono().setFontAlign(1, -1).drawString("TZ " + (worldIndex + 1) + "/" + zones.length, w - MARGIN, 36);
+    setMono();
+    drawFit("TERMLINK ORBITAL MAP", MARGIN, 36, 250, -1);
+    drawFit("TZ " + (worldIndex + 1) + "/" + zones.length, w - MARGIN, 36, 138, 1);
   }
 
   function drawFooter() {
@@ -326,8 +393,9 @@
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
     screen.drawLine(22, hgt - 34, w - 23, hgt - 34);
-    setMono().setFontAlign(-1, -1).drawString("K1 TZ BAND +/-", MARGIN, hgt - 24);
-    setMono().setFontAlign(1, -1).drawString("K2 TZ BAND +/-", w - MARGIN, hgt - 24);
+    setMono();
+    drawFit("K1 TZ BAND +/-", MARGIN, hgt - 24, 190, -1);
+    drawFit("K2 TZ BAND +/-", w - MARGIN, hgt - 24, 190, 1);
   }
 
   function draw() {
@@ -336,6 +404,7 @@
     var zi = safeZone(worldIndex);
     worldIndex = zi;
     var label = zoneAbbr(zi, utc);
+    var place = zoneName(zi);
     var lon = zoneLon(zi);
     var lat = 0;
     var zd = zoneDate(zi, utc);
@@ -365,19 +434,24 @@
     line(cx, cy - 9, cx, cy - 3);
     line(cx, cy + 3, cx, cy + 9);
     if (sunZ > 0) screen.drawCircle(cx + (sunX * r), cy - (sunY * r), 3);
-    setMono().setFontAlign(0, -1).drawString("ROBCO TZ RELAY", 348, 72);
+    setMono();
+    drawFit("ROBCO TZ RELAY", 348, 72, 170, 0);
     screen.setColor(1);
     screen.drawRect(272, 96, 430, 280);
-    screen.drawLine(272, 122, 430, 122);
-    setMono().setFontAlign(0, -1).drawString(label, 351, 102);
+    screen.drawLine(272, 140, 430, 140);
+    setMono();
+    drawFit(label, 351, 101, 146, 0);
+    drawFit(place, 351, 121, 146, 0);
     screen.setColor(3);
-    setVector(30).setFontAlign(0, 0).drawString(formatTime(zd), 351, 154);
+    drawVectorFit(formatTime(zd), 351, 164, 146, 30, 22, 0);
     screen.setColor(1);
-    setMono().setFontAlign(0, -1).drawString(monthNames[zd.month] + " " + zd.date, 351, 188);
-    setMono().setFontAlign(0, -1).drawString("MERIDIAN " + formatLon(lon), 351, 214);
-    setMono().setFontAlign(0, -1).drawString("BAND " + (zi + 1) + "/" + zones.length, 351, 238);
+    setMono();
+    drawFit(monthNames[zd.month] + " " + zd.date, 351, 192, 146, 0);
+    drawFit("MERIDIAN " + formatLon(lon), 351, 216, 146, 0);
+    drawFit("BAND " + (zi + 1) + "/" + zones.length, 351, 240, 146, 0);
     screen.setColor(elev >= 0 ? 3 : 1);
-    setMono().setFontAlign(0, -1).drawString(phase + " " + (elev >= 0 ? "+" : "-") + Math.round(Math.abs(elev)), 351, 260);
+    setMono();
+    drawFit(phase + " " + (elev >= 0 ? "+" : "-") + Math.round(Math.abs(elev)), 351, 260, 146, 0);
     drawFooter();
     if (screen.flip) screen.flip();
   }

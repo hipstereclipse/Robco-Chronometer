@@ -39,6 +39,35 @@
     return screen;
   }
 
+  function textWidth(text) {
+    text = String(text);
+    try {
+      if (screen.stringWidth) return screen.stringWidth(text);
+    } catch (e) {
+    }
+    return text.length * 12;
+  }
+
+  function fitText(text, maxW) {
+    text = String(text);
+    while (text.length > 0 && textWidth(text) > maxW) text = text.substring(0, text.length - 1);
+    return text;
+  }
+
+  function drawFit(text, x, y, maxW, align) {
+    screen.setFontAlign(align, -1).drawString(fitText(text, maxW), x, y);
+  }
+
+  function drawVectorFit(text, x, y, maxW, maxSize, minSize, yAlign) {
+    var size;
+    text = String(text);
+    for (size = maxSize; size >= minSize; size -= 2) {
+      setVector(size);
+      if (textWidth(text) <= maxW) break;
+    }
+    screen.setFontAlign(0, yAlign).drawString(text, x, y);
+  }
+
   function sound(id) {
     try {
       if (typeof Pip !== "undefined" && Pip.audioBuiltin) Pip.audioBuiltin(id);
@@ -74,11 +103,13 @@
     screen.drawLine(22, 34, w - 23, 34);
     screen.drawLine(22, 58, w - 23, 58);
     screen.setColor(3);
-    setMono().setFontAlign(-1, -1).drawString("ROBCO INDUSTRIES (TM)", MARGIN, 8);
-    setMono().setFontAlign(1, -1).drawString("FIELD TEST", w - MARGIN, 8);
+    setMono();
+    drawFit("ROBCO INDUSTRIES (TM)", MARGIN, 8, 260, -1);
+    drawFit("FIELD TEST", w - MARGIN, 8, 130, 1);
     screen.setColor(1);
-    setMono().setFontAlign(-1, -1).drawString("TERMLINK TIMER", MARGIN, 36);
-    setMono().setFontAlign(1, -1).drawString("STOPWATCH", w - MARGIN, 36);
+    setMono();
+    drawFit("TERMLINK TIMER", MARGIN, 36, 250, -1);
+    drawFit("STOPWATCH", w - MARGIN, 36, 150, 1);
   }
 
   function drawFooter() {
@@ -86,8 +117,9 @@
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
     screen.drawLine(22, hgt - 34, w - 23, hgt - 34);
-    setMono().setFontAlign(-1, -1).drawString("K1 START/LAP", MARGIN, hgt - 24);
-    setMono().setFontAlign(1, -1).drawString("K2 RESET", w - MARGIN, hgt - 24);
+    setMono();
+    drawFit("K1 START/LAP", MARGIN, hgt - 24, 190, -1);
+    drawFit("K2 RESET", w - MARGIN, hgt - 24, 190, 1);
   }
 
   function draw() {
@@ -101,7 +133,7 @@
     screen.drawLine(58, 178, w - 58, 178);
     // Main elapsed time.
     screen.setColor(3);
-    setVector(60).setFontAlign(0, 0).drawString(formatMs(ms), cx, 122);
+    drawVectorFit(formatMs(ms), cx, 122, w - 136, 60, 34, 0);
     // Sub-second sweep bar (fills 0..1.0 each second) — visualises the live refresh.
     var barX0 = cx - 150, barX1 = cx + 150, barY = 168;
     var frac = (ms % 1000) / 1000;
@@ -113,10 +145,12 @@
     }
     // Status.
     screen.setColor(running ? 3 : 1);
-    setMono().setFontAlign(0, -1).drawString(running ? "PROTOCOL RUNNING" : "PROTOCOL HALTED", cx, 192);
+    setMono();
+    drawFit(running ? "PROTOCOL RUNNING" : "PROTOCOL HALTED", cx, 192, w - 136, 0);
     // Lap.
     screen.setColor(1);
-    setMono().setFontAlign(0, -1).drawString(lap >= 0 ? "ADDR 0xF4F0  LAP " + formatMs(lap) : "ADDR 0xF4F0  LAP --:--.--", cx, 224);
+    setMono();
+    drawFit(lap >= 0 ? "ADDR 0xF4F0  LAP " + formatMs(lap) : "ADDR 0xF4F0  LAP --:--.--", cx, 224, w - 136, 0);
     drawFooter();
     if (screen.flip) screen.flip();
   }

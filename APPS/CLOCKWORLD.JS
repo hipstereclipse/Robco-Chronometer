@@ -60,6 +60,25 @@
     return screen;
   }
 
+  function textWidth(text) {
+    text = String(text);
+    try {
+      if (screen.stringWidth) return screen.stringWidth(text);
+    } catch (e) {
+    }
+    return text.length * 12;
+  }
+
+  function fitText(text, maxW) {
+    text = String(text);
+    while (text.length > 0 && textWidth(text) > maxW) text = text.substring(0, text.length - 1);
+    return text;
+  }
+
+  function drawFit(text, x, y, maxW, align) {
+    screen.setFontAlign(align, -1).drawString(fitText(text, maxW), x, y);
+  }
+
   function sound(id) {
     try {
       if (typeof Pip !== "undefined" && Pip.audioBuiltin) Pip.audioBuiltin(id);
@@ -213,11 +232,13 @@
     screen.drawLine(22, 34, w - 23, 34);
     screen.drawLine(22, 58, w - 23, 58);
     screen.setColor(3);
-    setMono().setFontAlign(-1, -1).drawString("ROBCO INDUSTRIES (TM)", MARGIN, 8);
-    setMono().setFontAlign(1, -1).drawString(formatTime(d, false), w - MARGIN, 8);
+    setMono();
+    drawFit("ROBCO INDUSTRIES (TM)", MARGIN, 8, 260, -1);
+    drawFit(formatTime(d, false), w - MARGIN, 8, 90, 1);
     screen.setColor(1);
-    setMono().setFontAlign(-1, -1).drawString("TERMLINK WORLD RELAY", MARGIN, 36);
-    setMono().setFontAlign(1, -1).drawString("NODE " + zones[worldIndex][0], w - MARGIN, 36);
+    setMono();
+    drawFit("TERMLINK WORLD RELAY", MARGIN, 36, 250, -1);
+    drawFit("NODE " + zones[worldIndex][0], w - MARGIN, 36, 150, 1);
   }
 
   function drawFooter() {
@@ -225,8 +246,9 @@
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
     screen.drawLine(22, hgt - 34, w - 23, hgt - 34);
-    setMono().setFontAlign(-1, -1).drawString("K1 RELAY +/-", MARGIN, hgt - 24);
-    setMono().setFontAlign(1, -1).drawString("K2 RELAY +/-", w - MARGIN, hgt - 24);
+    setMono();
+    drawFit("K1 RELAY +/-", MARGIN, hgt - 24, 190, -1);
+    drawFit("K2 RELAY +/-", w - MARGIN, hgt - 24, 190, 1);
   }
 
   function draw() {
@@ -239,18 +261,22 @@
     screen.setColor(1);
     screen.drawRect(34, 72, 232, 270);
     screen.drawLine(34, 100, 232, 100);
-    setMono().setFontAlign(0, -1).drawString("LOCAL VAULT NODE", 133, 80);
+    setMono();
+    drawFit("LOCAL VAULT NODE", 133, 80, 184, 0);
     screen.setColor(3);
     setVector(38).setFontAlign(0, 0).drawString(formatTime(now, false), 133, 126);
-    setMono().setFontAlign(0, -1).drawString("RTC LINK ACTIVE", 133, 164);
+    setMono();
+    drawFit("RTC LINK ACTIVE", 133, 164, 184, 0);
     screen.setColor(1);
-    setMono().setFontAlign(0, -1).drawString(formatDate(now), 133, 190);
-    setMono().setFontAlign(0, -1).drawString(localOffsetText(), 133, 214);
-    setMono().setFontAlign(0, -1).drawString(zones[worldIndex][0] + " " + zoneAbbr(worldIndex, utc), 133, 238);
-    setMono().setFontAlign(0, -1).drawString(zoneIsDst(worldIndex, utc) ? "SUMMER TIME" : "STANDARD TIME", 133, 252);
+    setMono();
+    drawFit(formatDate(now), 133, 190, 184, 0);
+    drawFit(localOffsetText(), 133, 214, 184, 0);
+    drawFit(zones[worldIndex][0] + " " + zoneAbbr(worldIndex, utc), 133, 238, 184, 0);
+    drawFit(zoneIsDst(worldIndex, utc) ? "SUMMER TIME" : "STANDARD TIME", 133, 252, 184, 0);
     screen.drawRect(244, 72, w - 24, 270);
     screen.drawLine(244, 100, w - 24, 100);
-    setMono().setFontAlign(-1, -1).drawString("WASTELAND RELAY", 254, 80);
+    setMono();
+    drawFit("WASTELAND RELAY", 254, 80, w - 278, -1);
     // Smaller vector rows keep the fixed memory-address/city/zone/time columns
     // readable on the device's narrow screen.
     for (i = 0; i < 5; i++) {
@@ -258,9 +284,9 @@
       var zd = zoneDate(zi, utc);
       var y = 118 + (i * 30);
       screen.setColor(i === 0 ? 3 : 1);
-      setVector(14).setFontAlign(-1, 0).drawString(hex4(0xF4F0 + (zi * 44)), 254, y);
-      setVector(14).setFontAlign(-1, 0).drawString(zones[zi][0], 318, y);
-      setVector(14).setFontAlign(-1, 0).drawString(zoneAbbr(zi, utc), 388, y);
+      setVector(14).setFontAlign(-1, 0).drawString(fitText(hex4(0xF4F0 + (zi * 44)), 56), 254, y);
+      setVector(14).setFontAlign(-1, 0).drawString(fitText(zones[zi][0], 66), 318, y);
+      setVector(14).setFontAlign(-1, 0).drawString(fitText(zoneAbbr(zi, utc), 46), 388, y);
       setVector(14).setFontAlign(1, 0).drawString(formatTime(zd, true), w - 30, y);
     }
     drawFooter();

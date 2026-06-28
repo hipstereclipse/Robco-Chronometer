@@ -1,7 +1,7 @@
 {
   "id": "robglobe",
   "name": "RobCo Globe",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "files": "APPINFO/GLOBE.info,APPINFO/GLOBE.IMG,APPS/CLOCKGLOBE.JS",
   "src": "APPS/CLOCKGLOBE.JS",
   "icon": "APPINFO/GLOBE.IMG"

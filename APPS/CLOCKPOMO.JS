@@ -11,6 +11,9 @@
   var running = false;
   var endTime = 0;
   var cycles = 0;
+  var stepIndex = 4;
+  var stepValues = [1, 5, 15, 30, 60, 300];
+  var stepLabels = ["1S", "5S", "15S", "30S", "1M", "5M"];
 
   function nowMs() {
     return (new Date()).getTime();
@@ -23,6 +26,19 @@
 
   function clamp(n, lo, hi) {
     return Math.max(lo, Math.min(hi, n));
+  }
+
+  function wrap(n, max) {
+    n = n % max;
+    return n < 0 ? n + max : n;
+  }
+
+  function stepSeconds() {
+    return stepValues[stepIndex];
+  }
+
+  function stepLabel() {
+    return stepLabels[stepIndex];
   }
 
   function setMono() {
@@ -41,6 +57,35 @@
       setMono();
     }
     return screen;
+  }
+
+  function textWidth(text) {
+    text = String(text);
+    try {
+      if (screen.stringWidth) return screen.stringWidth(text);
+    } catch (e) {
+    }
+    return text.length * 12;
+  }
+
+  function fitText(text, maxW) {
+    text = String(text);
+    while (text.length > 0 && textWidth(text) > maxW) text = text.substring(0, text.length - 1);
+    return text;
+  }
+
+  function drawFit(text, x, y, maxW, align) {
+    screen.setFontAlign(align, -1).drawString(fitText(text, maxW), x, y);
+  }
+
+  function drawVectorFit(text, x, y, maxW, maxSize, minSize, yAlign) {
+    var size;
+    text = String(text);
+    for (size = maxSize; size >= minSize; size -= 2) {
+      setVector(size);
+      if (textWidth(text) <= maxW) break;
+    }
+    screen.setFontAlign(0, yAlign).drawString(text, x, y);
   }
 
   function sound(id) {
@@ -100,11 +145,13 @@
     screen.drawLine(22, 34, w - 23, 34);
     screen.drawLine(22, 58, w - 23, 58);
     screen.setColor(3);
-    setMono().setFontAlign(-1, -1).drawString("ROBCO INDUSTRIES (TM)", MARGIN, 8);
-    setMono().setFontAlign(1, -1).drawString(phase === 0 ? "WORK" : "BREAK", w - MARGIN, 8);
+    setMono();
+    drawFit("ROBCO INDUSTRIES (TM)", MARGIN, 8, 260, -1);
+    drawFit(phase === 0 ? "WORK" : "BREAK", w - MARGIN, 8, 130, 1);
     screen.setColor(1);
-    setMono().setFontAlign(-1, -1).drawString("TERMLINK CYCLE TIMER", MARGIN, 36);
-    setMono().setFontAlign(1, -1).drawString(phase === 0 ? "WORK" : "BREAK", w - MARGIN, 36);
+    setMono();
+    drawFit("TERMLINK CYCLE TIMER", MARGIN, 36, 250, -1);
+    drawFit(phase === 0 ? "WORK" : "BREAK", w - MARGIN, 36, 150, 1);
   }
 
   function drawFooter() {
@@ -112,8 +159,9 @@
     var h = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
     screen.drawLine(22, h - 34, w - 23, h - 34);
-    setMono().setFontAlign(-1, -1).drawString("K1 START/ADJ", MARGIN, h - 24);
-    setMono().setFontAlign(1, -1).drawString("K2 RESET", w - MARGIN, h - 24);
+    setMono();
+    drawFit("K1 START/ADJ", MARGIN, h - 24, 190, -1);
+    drawFit("K2 STEP/RST", w - MARGIN, h - 24, 190, 1);
   }
 
   function draw() {
@@ -126,12 +174,15 @@
     screen.drawRect(58, 74, 420, 254);
     screen.drawLine(58, 180, 420, 180);
     screen.setColor(3);
-    setVector(64).setFontAlign(0, 0).drawString(formatDuration(cur), 238, 124);
+    drawVectorFit(formatDuration(cur), 238, 124, 340, 64, 36, 0);
     drawProgress(94, 164, 386, 173, total ? cur / total : 0);
     screen.setColor(3);
-    setMono().setFontAlign(0, -1).drawString(phaseName + (running ? " ACTIVE" : " READY"), 238, 190);
+    setMono();
+    drawFit(phaseName + (running ? " ACTIVE" : " READY"), 238, 190, 340, 0);
     screen.setColor(1);
-    setMono().setFontAlign(0, -1).drawString("CYCLES " + cycles + "  WORK " + formatDuration(workSeconds) + "  BREAK " + formatDuration(breakSeconds), 238, 225);
+    setMono();
+    drawFit("CYCLES " + cycles + "  INCREMENT " + stepLabel(), 238, 216, 340, 0);
+    drawFit("WORK " + formatDuration(workSeconds) + "  BREAK " + formatDuration(breakSeconds), 238, 238, 340, 0);
     drawFooter();
     if (screen.flip) screen.flip();
   }
@@ -175,10 +226,10 @@
       toggle();
     } else if (!running) {
       if (phase === 0) {
-        workSeconds = clamp(workSeconds + (dir * 60), 5 * 60, 60 * 60);
+        workSeconds = clamp(workSeconds + (dir * stepSeconds()), 5 * 60, 60 * 60);
         remaining = workSeconds;
       } else {
-        breakSeconds = clamp(breakSeconds + (dir * 60), 60, 30 * 60);
+        breakSeconds = clamp(breakSeconds + (dir * stepSeconds()), 60, 30 * 60);
         remaining = breakSeconds;
       }
       sound("CLICK");
@@ -188,7 +239,13 @@
 
   function onKnob2(dir) {
     dir = dir | 0;
-    reset();
+    if (dir === 0) {
+      reset();
+    } else {
+      stepIndex = wrap(stepIndex + dir, stepValues.length);
+      sound("CLICK");
+      safeDraw();
+    }
   }
 
   if (typeof Pip !== "undefined") {
