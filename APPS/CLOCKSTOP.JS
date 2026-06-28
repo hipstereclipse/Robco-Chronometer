@@ -1,11 +1,17 @@
 (function() {
   var appId = "ROBSTOP";
   var screen = (typeof h !== "undefined") ? h : ((typeof g !== "undefined") ? g : undefined);
-  var ticker;
+  var ticker = null;
   var running = false;
   var start = 0;
   var elapsed = 0;
   var lap = -1;
+  // While running we redraw at ~100 Hz so the hundredths digits and the
+  // sub-second sweep animate smoothly; while stopped the screen is static and
+  // only repaints on input, so we idle the CPU.
+  var FAST_MS = 10;
+  // Inset for content near the rounded-corner bezel (see header/footer).
+  var MARGIN = 32;
 
   function nowMs() {
     return (new Date()).getTime();
@@ -51,37 +57,58 @@
     var h = Math.floor(total / 3600);
     var m = Math.floor((total % 3600) / 60);
     var s = total % 60;
-    var t = Math.floor((ms % 1000) / 100);
-    return h > 0 ? pad2(h) + ":" + pad2(m) + ":" + pad2(s) : pad2(m) + ":" + pad2(s) + "." + t;
+    var cs = Math.floor((ms % 1000) / 10);
+    return h > 0 ? pad2(h) + ":" + pad2(m) + ":" + pad2(s) : pad2(m) + ":" + pad2(s) + "." + pad2(cs);
+  }
+
+  function fillBar(x0, y0, x1, y1) {
+    var y;
+    for (y = y0; y <= y1; y++) screen.drawLine(x0, y, x1, y);
   }
 
   function drawHeader() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     screen.reset().clear();
     screen.setColor(3);
-    setMono().setFontAlign(-1, -1).drawString("ROBCO STOPWATCH", 8, 6);
-    setMono().setFontAlign(1, -1).drawString("FIELD TEST", w - 8, 6);
+    setMono().setFontAlign(-1, -1).drawString("ROBCO STOPWATCH", MARGIN, 8);
+    setMono().setFontAlign(1, -1).drawString("FIELD TEST", w - MARGIN, 8);
     screen.drawLine(0, 32, w, 32);
     setMono().setFontAlign(0, -1).drawString("STOPWATCH", w / 2, 36);
   }
 
   function drawFooter() {
     var w = screen.getWidth ? screen.getWidth() : 480;
-    var h = screen.getHeight ? screen.getHeight() : 320;
+    var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
-    screen.drawLine(0, h - 29, w, h - 29);
-    setMono().setFontAlign(-1, -1).drawString("K1 START/LAP", 8, h - 22);
-    setMono().setFontAlign(1, -1).drawString("K2 RESET", w - 8, h - 22);
+    screen.drawLine(0, hgt - 32, w, hgt - 32);
+    setMono().setFontAlign(-1, -1).drawString("K1 START/LAP", MARGIN, hgt - 24);
+    setMono().setFontAlign(1, -1).drawString("K2 RESET", w - MARGIN, hgt - 24);
   }
 
   function draw() {
     if (!screen) return;
+    var w = screen.getWidth ? screen.getWidth() : 480;
+    var ms = stopwatchMs();
+    var cx = w / 2;
     drawHeader();
+    // Main elapsed time.
     screen.setColor(3);
-    setVector(58).setFontAlign(0, 0).drawString(formatMs(stopwatchMs()), 238, 130);
-    setMono().setFontAlign(0, -1).drawString(running ? "FIELD TEST RUNNING" : "FIELD TEST STOPPED", 238, 190);
+    setVector(60).setFontAlign(0, 0).drawString(formatMs(ms), cx, 122);
+    // Sub-second sweep bar (fills 0..1.0 each second) — visualises the live refresh.
+    var barX0 = cx - 150, barX1 = cx + 150, barY = 168;
+    var frac = (ms % 1000) / 1000;
     screen.setColor(1);
-    setMono().setFontAlign(0, -1).drawString(lap >= 0 ? "LAP  " + formatMs(lap) : "LAP  --:--.-", 238, 224);
+    screen.drawRect(barX0, barY, barX1, barY + 9);
+    if (running) {
+      screen.setColor(3);
+      fillBar(barX0 + 2, barY + 2, barX0 + 2 + Math.round((barX1 - barX0 - 4) * frac), barY + 7);
+    }
+    // Status.
+    screen.setColor(running ? 3 : 1);
+    setMono().setFontAlign(0, -1).drawString(running ? "FIELD TEST RUNNING" : "FIELD TEST STOPPED", cx, 192);
+    // Lap.
+    screen.setColor(1);
+    setMono().setFontAlign(0, -1).drawString(lap >= 0 ? "LAP  " + formatMs(lap) : "LAP  --:--.--", cx, 224);
     drawFooter();
     if (screen.flip) screen.flip();
   }
@@ -93,6 +120,14 @@
     }
   }
 
+  function applyRate() {
+    if (ticker) {
+      clearInterval(ticker);
+      ticker = null;
+    }
+    if (running) ticker = setInterval(safeDraw, FAST_MS);
+  }
+
   function toggle() {
     if (running) {
       elapsed = stopwatchMs();
@@ -101,6 +136,7 @@
       start = nowMs();
       running = true;
     }
+    applyRate();
     sound("OK");
     safeDraw();
   }
@@ -110,13 +146,15 @@
     start = 0;
     elapsed = 0;
     lap = -1;
+    applyRate();
     sound("PREV");
     safeDraw();
   }
 
   function onKnob1(dir) {
-    if (dir === 0) toggle();
-    else if (running) {
+    if (dir === 0) {
+      toggle();
+    } else if (running) {
       lap = stopwatchMs();
       sound("CLICK");
       safeDraw();
@@ -126,14 +164,13 @@
   }
 
   function onKnob2(dir) {
-    if (dir === 0 || dir !== 0) reset();
+    reset();
   }
 
   if (typeof Pip !== "undefined") {
     Pip.on("knob1", onKnob1);
     Pip.on("knob2", onKnob2);
   }
-  ticker = setInterval(safeDraw, 1000);
   safeDraw();
 
   return {

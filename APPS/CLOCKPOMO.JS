@@ -2,6 +2,8 @@
   var appId = "ROBPOMO";
   var screen = (typeof h !== "undefined") ? h : ((typeof g !== "undefined") ? g : undefined);
   var ticker;
+  // Inset for content near the rounded-corner bezel so nothing is clipped.
+  var MARGIN = 32;
   var workSeconds = 25 * 60;
   var breakSeconds = 5 * 60;
   var phase = 0;
@@ -78,8 +80,8 @@
     var w = screen.getWidth ? screen.getWidth() : 480;
     screen.reset().clear();
     screen.setColor(3);
-    setMono().setFontAlign(-1, -1).drawString("ROBCO POMODORO", 8, 6);
-    setMono().setFontAlign(1, -1).drawString(phase === 0 ? "WORK" : "BREAK", w - 8, 6);
+    setMono().setFontAlign(-1, -1).drawString("ROBCO POMODORO", MARGIN, 8);
+    setMono().setFontAlign(1, -1).drawString(phase === 0 ? "WORK" : "BREAK", w - MARGIN, 8);
     screen.drawLine(0, 32, w, 32);
     setMono().setFontAlign(0, -1).drawString("POMODORO", w / 2, 36);
   }
@@ -88,9 +90,9 @@
     var w = screen.getWidth ? screen.getWidth() : 480;
     var h = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
-    screen.drawLine(0, h - 29, w, h - 29);
-    setMono().setFontAlign(-1, -1).drawString("K1 START/ADJ", 8, h - 22);
-    setMono().setFontAlign(1, -1).drawString("K2 RESET", w - 8, h - 22);
+    screen.drawLine(0, h - 32, w, h - 32);
+    setMono().setFontAlign(-1, -1).drawString("K1 START/ADJ", MARGIN, h - 24);
+    setMono().setFontAlign(1, -1).drawString("K2 RESET", w - MARGIN, h - 24);
   }
 
   function draw() {

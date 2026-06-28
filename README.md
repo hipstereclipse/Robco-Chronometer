@@ -48,13 +48,14 @@ location's local time plus its solar phase (`DAYLIGHT` / `TWILIGHT` / `NIGHT`) a
 ![Globe with orbital relay panel](PREVIEWS/04-globe-orbital-relay.png)
 
 ### Analog
-A traditional analog face with hour/minute/second hands, three selectable face styles, and a
-"Vault‑Tec certified date" panel that can be toggled on or off.
+A redesigned analog face with weighted hour/minute hands, a live second hand, three named face
+styles (`CHRONO`, `FIELD`, `RANGER`), and a date/time panel that can be toggled on or off.
 
 ![Analog clock face](PREVIEWS/05-analog-clock.png)
 
 ### Stopwatch
-Start/stop with a lap capture. Resolution down to tenths of a second.
+Start/stop with a lap capture, hundredths-of-a-second display, and a sub-second sweep bar. While
+running it redraws at about 100 Hz for smooth motion; while stopped it idles until the next input.
 
 ![Stopwatch running with lap](PREVIEWS/06-stopwatch-running-lap.png)
 
@@ -104,6 +105,10 @@ all at once, which keeps the Espruino JSVar pool from hitting `LOW_MEMORY`/`MEMO
 
 A few pieces are worth calling out:
 
+- **Rounded-screen layout.** Header and footer labels are inset from the rounded screen corners
+  across the suite, and the preview renderer clips output to the same rounded 480x320 mask so
+  screenshots match what the bezel exposes on-device.
+
 - **Daylight saving, computed locally.** Rather than ship a tz database, each zone carries a
   standard offset plus a rule tag (`us`, `eu`, `aus`, `nz`, or `none`). Helpers compute the
   Nth/last-Sunday transition instants for the relevant year and decide whether a given UTC
@@ -120,7 +125,8 @@ A few pieces are worth calling out:
 
 - **Timers use wall-clock deltas.** The stopwatch, countdown, and Pomodoro store an absolute
   start/end time and recompute remaining/elapsed from `Date.now()` each tick, so they stay
-  accurate regardless of redraw jitter.
+  accurate regardless of redraw jitter. The stopwatch increases its redraw cadence only while it
+  is running so the hundredths display stays responsive without constantly repainting when idle.
 
 ### Repository layout
 

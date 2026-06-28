@@ -1,7 +1,7 @@
 {
   "id": "robworld",
   "name": "RobCo World",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "files": "APPINFO/WORLD.info,APPINFO/WORLD.IMG,APPS/CLOCKWORLD.JS",
   "src": "APPS/CLOCKWORLD.JS",
   "icon": "APPINFO/WORLD.IMG"

@@ -2,6 +2,8 @@
   var appId = "ROBGLOBE";
   var screen = (typeof h !== "undefined") ? h : ((typeof g !== "undefined") ? g : undefined);
   var ticker;
+  // Inset for content near the rounded-corner bezel so nothing is clipped.
+  var MARGIN = 32;
   var worldIndex = 1;
   var monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
   var zones = [
@@ -206,8 +208,8 @@
     var w = screen.getWidth ? screen.getWidth() : 480;
     screen.reset().clear();
     screen.setColor(3);
-    setMono().setFontAlign(-1, -1).drawString("ROBCO GLOBE", 8, 6);
-    setMono().setFontAlign(1, -1).drawString(formatTime(d), w - 8, 6);
+    setMono().setFontAlign(-1, -1).drawString("ROBCO GLOBE", MARGIN, 8);
+    setMono().setFontAlign(1, -1).drawString(formatTime(d), w - MARGIN, 8);
     screen.drawLine(0, 32, w, 32);
     setMono().setFontAlign(0, -1).drawString("GLOBE", w / 2, 36);
   }
@@ -216,9 +218,9 @@
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
-    screen.drawLine(0, hgt - 29, w, hgt - 29);
-    setMono().setFontAlign(-1, -1).drawString("K1 ZONES", 8, hgt - 22);
-    setMono().setFontAlign(1, -1).drawString("K2 ZONES", w - 8, hgt - 22);
+    screen.drawLine(0, hgt - 32, w, hgt - 32);
+    setMono().setFontAlign(-1, -1).drawString("K1 ZONES", MARGIN, hgt - 24);
+    setMono().setFontAlign(1, -1).drawString("K2 ZONES", w - MARGIN, hgt - 24);
   }
 
   function draw() {
