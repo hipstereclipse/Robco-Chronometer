@@ -46,6 +46,12 @@
     screen.drawLine(x1, y1 + c, x1 + c, y1);
   }
 
+  function drawScanlines(w, hgt) {
+    var y;
+    screen.setColor(1);
+    for (y = 76; y < hgt - 44; y += 8) screen.drawLine(36, y, w - 37, y);
+  }
+
   function wrap(n, max) {
     n = n % max;
     return n < 0 ? n + max : n;
@@ -256,29 +262,27 @@
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.reset().clear();
     screen.setColor(1);
-    frame(22, 6, w - 23, hgt - 8, 12);
-    screen.drawLine(34, 34, w - 35, 34);
-    screen.drawLine(34, 58, w - 35, 58);
+    screen.drawLine(MARGIN, 42, w - MARGIN, 42);
+    screen.drawLine(MARGIN, 66, w - MARGIN, 66);
     screen.setColor(3);
-    setMono();
-    drawFit("ROBCO INDUSTRIES (TM)", MARGIN, 8, 240, -1);
-    drawFit(formatTime(d, false), w - MARGIN, 8, 90, 1);
+    setVector(15);
+    drawFit("ROBCO TERMLINK", MARGIN, 12, 210, -1);
+    drawFit(formatTime(d, false), w - MARGIN, 12, 90, 1);
+    drawFit("> CIVIL TIME RELAY", MARGIN, 47, 282, -1);
     screen.setColor(1);
-    setMono();
-    drawFit("TERMLINK WORLD RELAY", MARGIN, 36, 240, -1);
-    drawFit("NODE " + zones[worldIndex][0], w - MARGIN, 36, 150, 1);
+    drawFit("NODE " + zones[worldIndex][0], w - MARGIN, 47, 152, 1);
   }
 
   function drawFooter() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
-    screen.drawLine(34, hgt - 34, w - 35, hgt - 34);
-    setVector(16);
+    screen.drawLine(MARGIN, hgt - 40, w - MARGIN, hgt - 40);
+    setVector(14);
     screen.setColor(1);
-    drawFit("K1/K2 TURN ZONES", MARGIN, hgt - 27, 200, -1);
+    drawFit("K1/K2 ZONES", MARGIN, hgt - 31, 200, -1);
     screen.setColor(locked ? 3 : 1);
-    drawFit(locked ? "LOCKED  K1 UNLOCK" : "K1 PRESS LOCK", w - MARGIN, hgt - 27, 224, 1);
+    drawFit(locked ? "LOCKED  K1 UNLOCK" : "K1 LOCK", w - MARGIN, hgt - 31, 224, 1);
   }
 
   function draw() {
@@ -289,34 +293,32 @@
     var i;
     drawHeader(now);
     screen.setColor(1);
-    screen.drawRect(34, 72, 232, 270);
-    screen.drawLine(34, 100, 232, 100);
+    screen.drawRect(36, 78, 232, 260);
+    screen.drawLine(36, 102, 232, 102);
     setMono();
-    drawFit("LOCAL VAULT NODE", 133, 80, 184, 0);
+    drawFit("LOCAL NODE 0x01", 134, 84, 184, 0);
     screen.setColor(3);
-    setVector(38).setFontAlign(0, 0).drawString(formatTime(now, false), 133, 126);
+    setVector(36).setFontAlign(0, 0).drawString(formatTime(now, false), 134, 128);
     setMono();
-    drawFit("RTC LINK ACTIVE", 133, 164, 184, 0);
+    drawFit("RTC LINK ACTIVE", 134, 164, 184, 0);
     screen.setColor(1);
     setMono();
-    drawFit(formatDate(now), 133, 190, 184, 0);
-    drawFit(localOffsetText(), 133, 214, 184, 0);
-    drawFit(zones[worldIndex][0] + " " + zoneAbbr(worldIndex, utc), 133, 238, 184, 0);
-    drawFit(zoneIsDst(worldIndex, utc) ? "SUMMER TIME" : "STANDARD TIME", 133, 252, 184, 0);
-    screen.drawRect(244, 72, w - 24, 270);
-    screen.drawLine(244, 100, w - 24, 100);
+    drawFit(formatDate(now), 134, 190, 184, 0);
+    drawFit(localOffsetText(), 134, 214, 184, 0);
+    drawFit(zoneAbbr(worldIndex, utc) + " " + zones[worldIndex][0], 134, 238, 184, 0);
+    drawFit(zoneIsDst(worldIndex, utc) ? "SUMMER TIME" : "STANDARD TIME", 134, 250, 184, 0);
+    screen.drawRect(244, 78, w - 30, 260);
+    screen.drawLine(244, 102, w - 30, 102);
     setMono();
-    drawFit("WASTELAND RELAY", 254, 80, w - 278, -1);
-    // Three roomy columns -- city (left), zone (left @348), time (right edge) --
-    // with the decorative node address dropped so the zone and time never collide.
+    drawFit("WASTELAND RELAY", 254, 84, w - 290, -1);
+    // Two clear columns: zone/city on the left, time right-aligned.
     for (i = 0; i < 5; i++) {
       var zi = (worldIndex + i) % zones.length;
       var zd = zoneDate(zi, utc);
-      var y = 118 + (i * 30);
+      var y = 120 + (i * 29);
       screen.setColor(i === 0 ? 3 : 1);
-      setVector(14).setFontAlign(-1, 0).drawString(fitText(zones[zi][0], 90), 254, y);
-      setVector(14).setFontAlign(-1, 0).drawString(fitText(zoneAbbr(zi, utc), 44), 348, y);
-      setVector(14).setFontAlign(1, 0).drawString(formatTime(zd, true), w - 32, y);
+      setVector(13).setFontAlign(-1, 0).drawString(fitText((i === 0 ? "> " : "  ") + zoneAbbr(zi, utc) + " " + zones[zi][0], 120), 254, y);
+      setVector(13).setFontAlign(1, 0).drawString(formatTime(zd, true), w - 36, y);
     }
     drawFooter();
     if (screen.flip) screen.flip();

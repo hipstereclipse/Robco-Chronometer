@@ -1,7 +1,7 @@
 {
   "id": "robstop",
   "name": "RobCo Stopwatch",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "files": "APPINFO/STOPWATCH.info,APPINFO/STOPWATCH.IMG,APPS/CLOCKSTOP.JS",
   "src": "APPS/CLOCKSTOP.JS",
   "icon": "APPINFO/STOPWATCH.IMG"

@@ -55,6 +55,13 @@ function Set-Pixel {
   }
 }
 
+function Clear-Pixel {
+  param([int]$X, [int]$Y)
+  if ($X -ge 0 -and $X -lt 64 -and $Y -ge 0 -and $Y -lt 64) {
+    $script:Pix[($Y * 64) + $X] = 0
+  }
+}
+
 function Draw-Line {
   param([int]$X0, [int]$Y0, [int]$X1, [int]$Y1)
   $Dx = [Math]::Abs($X1 - $X0)
@@ -64,6 +71,22 @@ function Draw-Line {
   $Err = $Dx + $Dy
   while ($true) {
     Set-Pixel $X0 $Y0
+    if ($X0 -eq $X1 -and $Y0 -eq $Y1) { break }
+    $E2 = 2 * $Err
+    if ($E2 -ge $Dy) { $Err += $Dy; $X0 += $Sx }
+    if ($E2 -le $Dx) { $Err += $Dx; $Y0 += $Sy }
+  }
+}
+
+function Clear-Line {
+  param([int]$X0, [int]$Y0, [int]$X1, [int]$Y1)
+  $Dx = [Math]::Abs($X1 - $X0)
+  $Sx = if ($X0 -lt $X1) { 1 } else { -1 }
+  $Dy = -[Math]::Abs($Y1 - $Y0)
+  $Sy = if ($Y0 -lt $Y1) { 1 } else { -1 }
+  $Err = $Dx + $Dy
+  while ($true) {
+    Clear-Pixel $X0 $Y0
     if ($X0 -eq $X1 -and $Y0 -eq $Y1) { break }
     $E2 = 2 * $Err
     if ($E2 -ge $Dy) { $Err += $Dy; $X0 += $Sx }
@@ -83,6 +106,13 @@ function Fill-Rect {
   param([int]$X0, [int]$Y0, [int]$X1, [int]$Y1)
   for ($Y = $Y0; $Y -le $Y1; $Y++) {
     Draw-Line $X0 $Y $X1 $Y
+  }
+}
+
+function Clear-Rect {
+  param([int]$X0, [int]$Y0, [int]$X1, [int]$Y1)
+  for ($Y = $Y0; $Y -le $Y1; $Y++) {
+    Clear-Line $X0 $Y $X1 $Y
   }
 }
 
@@ -112,6 +142,181 @@ function Fill-Circle {
     $W = [int][Math]::Floor([Math]::Sqrt(($R * $R) - ($Y * $Y)))
     Draw-Line ($Cx - $W) ($Cy + $Y) ($Cx + $W) ($Cy + $Y)
   }
+}
+
+function Clear-Circle {
+  param([int]$Cx, [int]$Cy, [int]$R)
+  for ($Y = -$R; $Y -le $R; $Y++) {
+    $W = [int][Math]::Floor([Math]::Sqrt(($R * $R) - ($Y * $Y)))
+    Clear-Line ($Cx - $W) ($Cy + $Y) ($Cx + $W) ($Cy + $Y)
+  }
+}
+
+function Fill-Ellipse {
+  param([int]$Cx, [int]$Cy, [int]$Rx, [int]$Ry)
+  for ($Y = -$Ry; $Y -le $Ry; $Y++) {
+    $T = 1 - (($Y * $Y) / [double]($Ry * $Ry))
+    if ($T -lt 0) { continue }
+    $W = [int][Math]::Floor($Rx * [Math]::Sqrt($T))
+    Draw-Line ($Cx - $W) ($Cy + $Y) ($Cx + $W) ($Cy + $Y)
+  }
+}
+
+function Clear-Ellipse {
+  param([int]$Cx, [int]$Cy, [int]$Rx, [int]$Ry)
+  for ($Y = -$Ry; $Y -le $Ry; $Y++) {
+    $T = 1 - (($Y * $Y) / [double]($Ry * $Ry))
+    if ($T -lt 0) { continue }
+    $W = [int][Math]::Floor($Rx * [Math]::Sqrt($T))
+    Clear-Line ($Cx - $W) ($Cy + $Y) ($Cx + $W) ($Cy + $Y)
+  }
+}
+
+function Draw-Ellipse {
+  param([int]$Cx, [int]$Cy, [int]$Rx, [int]$Ry)
+  for ($A = 0; $A -lt 360; $A += 3) {
+    $Rad = $A * [Math]::PI / 180
+    Set-Pixel ([int][Math]::Round($Cx + ([Math]::Cos($Rad) * $Rx))) ([int][Math]::Round($Cy + ([Math]::Sin($Rad) * $Ry)))
+  }
+}
+
+function Draw-ThickLine {
+  param([int]$X0, [int]$Y0, [int]$X1, [int]$Y1, [int]$T = 1)
+  for ($O = -$T; $O -le $T; $O++) {
+    Draw-Line ($X0 + $O) $Y0 ($X1 + $O) $Y1
+    Draw-Line $X0 ($Y0 + $O) $X1 ($Y1 + $O)
+  }
+}
+
+function Clear-ThickLine {
+  param([int]$X0, [int]$Y0, [int]$X1, [int]$Y1, [int]$T = 1)
+  for ($O = -$T; $O -le $T; $O++) {
+    Clear-Line ($X0 + $O) $Y0 ($X1 + $O) $Y1
+    Clear-Line $X0 ($Y0 + $O) $X1 ($Y1 + $O)
+  }
+}
+
+function Draw-Starburst {
+  param([int]$Cx, [int]$Cy, [int]$Inner, [int]$Outer, [int]$Count = 8)
+  for ($I = 0; $I -lt $Count; $I++) {
+    $A = ($I / $Count) * [Math]::PI * 2
+    Draw-Line `
+      ([int][Math]::Round($Cx + ([Math]::Cos($A) * $Inner))) `
+      ([int][Math]::Round($Cy + ([Math]::Sin($A) * $Inner))) `
+      ([int][Math]::Round($Cx + ([Math]::Cos($A) * $Outer))) `
+      ([int][Math]::Round($Cy + ([Math]::Sin($A) * $Outer)))
+  }
+}
+
+function Draw-Atom {
+  param([int]$Cx, [int]$Cy)
+  Draw-Ellipse $Cx $Cy 11 5
+  Draw-Ellipse $Cx $Cy 5 11
+  Draw-Line ($Cx - 9) ($Cy - 7) ($Cx + 9) ($Cy + 7)
+  Draw-Line ($Cx - 9) ($Cy + 7) ($Cx + 9) ($Cy - 7)
+  Fill-Circle $Cx $Cy 2
+}
+
+function Draw-MascotHead {
+  param([int]$Cx, [int]$Cy)
+  Draw-Ellipse $Cx $Cy 8 10
+  Draw-Circle ($Cx - 8) ($Cy + 1) 2
+  Draw-Circle ($Cx + 8) ($Cy + 1) 2
+  Draw-ThickLine ($Cx - 7) ($Cy - 9) ($Cx - 1) ($Cy - 13) 1
+  Draw-ThickLine ($Cx - 1) ($Cy - 13) ($Cx + 6) ($Cy - 9) 1
+  Fill-Circle ($Cx - 3) ($Cy - 2) 1
+  Fill-Circle ($Cx + 4) ($Cy - 2) 1
+  Draw-Line ($Cx - 4) ($Cy + 4) ($Cx - 1) ($Cy + 6)
+  Draw-Line ($Cx - 1) ($Cy + 6) ($Cx + 4) ($Cy + 5)
+  Draw-Line ($Cx - 5) ($Cy + 11) ($Cx - 8) ($Cy + 17)
+  Draw-Line ($Cx + 5) ($Cy + 11) ($Cx + 8) ($Cy + 17)
+  Draw-Line ($Cx - 11) ($Cy + 18) ($Cx + 11) ($Cy + 18)
+}
+
+function Draw-ClockFace {
+  param([int]$Cx, [int]$Cy, [int]$R)
+  Draw-Circle $Cx $Cy $R
+  Draw-Circle $Cx $Cy ($R - 2)
+  Draw-Line $Cx ($Cy - $R) $Cx ($Cy - $R + 4)
+  Draw-Line $Cx ($Cy + $R) $Cx ($Cy + $R - 4)
+  Draw-Line ($Cx - $R) $Cy ($Cx - $R + 4) $Cy
+  Draw-Line ($Cx + $R) $Cy ($Cx + $R - 4) $Cy
+  Draw-Line $Cx $Cy $Cx ($Cy - 8)
+  Draw-Line $Cx $Cy ($Cx + 8) ($Cy + 4)
+  Fill-Circle $Cx $Cy 2
+}
+
+function Draw-GlobeMini {
+  param([int]$Cx, [int]$Cy, [int]$R)
+  Draw-Circle $Cx $Cy $R
+  Draw-Ellipse $Cx $Cy ([int]($R / 2)) $R
+  Draw-Line ($Cx - $R) $Cy ($Cx + $R) $Cy
+  Draw-Line $Cx ($Cy - $R) $Cx ($Cy + $R)
+  Draw-Line ($Cx - $R + 4) ($Cy - 6) ($Cx + $R - 4) ($Cy - 6)
+  Draw-Line ($Cx - $R + 4) ($Cy + 6) ($Cx + $R - 4) ($Cy + 6)
+}
+
+function Draw-Rocket {
+  param([int]$Cx, [int]$Cy)
+  Draw-Line $Cx ($Cy - 10) ($Cx + 6) ($Cy + 4)
+  Draw-Line ($Cx + 6) ($Cy + 4) ($Cx - 5) ($Cy + 7)
+  Draw-Line ($Cx - 5) ($Cy + 7) $Cx ($Cy - 10)
+  Fill-Circle ($Cx + 1) ($Cy - 1) 2
+  Draw-Line ($Cx - 3) ($Cy + 7) ($Cx - 8) ($Cy + 12)
+  Draw-Line ($Cx + 4) ($Cy + 5) ($Cx + 7) ($Cy + 11)
+  Draw-Line ($Cx - 6) ($Cy + 11) ($Cx - 11) ($Cy + 15)
+  Draw-Line ($Cx - 4) ($Cy + 12) ($Cx - 5) ($Cy + 17)
+}
+
+function Draw-VaultSmile {
+  param([int]$Cx, [int]$Cy)
+  Fill-Ellipse $Cx $Cy 11 13
+  Clear-Circle ($Cx - 4) ($Cy - 2) 1
+  Clear-Circle ($Cx + 4) ($Cy - 2) 1
+  Clear-ThickLine ($Cx - 5) ($Cy + 5) ($Cx - 1) ($Cy + 7) 1
+  Clear-ThickLine ($Cx - 1) ($Cy + 7) ($Cx + 5) ($Cy + 5) 1
+  Clear-ThickLine ($Cx - 7) ($Cy - 8) ($Cx - 1) ($Cy - 13) 1
+  Clear-ThickLine ($Cx - 1) ($Cy - 13) ($Cx + 7) ($Cy - 8) 1
+  Draw-ThickLine ($Cx - 9) ($Cy + 14) ($Cx - 17) ($Cy + 25) 1
+  Draw-ThickLine ($Cx + 9) ($Cy + 14) ($Cx + 17) ($Cy + 25) 1
+  Draw-Line ($Cx - 17) ($Cy + 25) ($Cx + 17) ($Cy + 25)
+}
+
+function Draw-HeavyClock {
+  param([int]$Cx, [int]$Cy, [int]$R)
+  Fill-Circle $Cx $Cy $R
+  Clear-Circle $Cx $Cy ($R - 3)
+  Fill-Circle $Cx $Cy 2
+  Draw-ThickLine $Cx $Cy $Cx ($Cy - [int]($R * 0.55)) 1
+  Draw-ThickLine $Cx $Cy ($Cx + [int]($R * 0.5)) ($Cy + [int]($R * 0.25)) 1
+  Draw-Line $Cx ($Cy - $R) $Cx ($Cy - $R + 4)
+  Draw-Line ($Cx + $R) $Cy ($Cx + $R - 4) $Cy
+  Draw-Line $Cx ($Cy + $R) $Cx ($Cy + $R - 4)
+  Draw-Line ($Cx - $R) $Cy ($Cx - $R + 4) $Cy
+}
+
+function Draw-HeavyGlobe {
+  param([int]$Cx, [int]$Cy, [int]$R)
+  Fill-Circle $Cx $Cy $R
+  Clear-Circle $Cx $Cy ($R - 2)
+  Draw-Ellipse $Cx $Cy ([int]($R * 0.48)) ($R - 1)
+  Draw-Line ($Cx - $R + 2) $Cy ($Cx + $R - 2) $Cy
+  Draw-Line $Cx ($Cy - $R + 2) $Cx ($Cy + $R - 2)
+  Draw-Line ($Cx - $R + 5) ($Cy - 7) ($Cx + $R - 5) ($Cy - 7)
+  Draw-Line ($Cx - $R + 5) ($Cy + 7) ($Cx + $R - 5) ($Cy + 7)
+}
+
+function Draw-Tomato {
+  param([int]$Cx, [int]$Cy)
+  Fill-Ellipse $Cx $Cy 15 14
+  Clear-Circle ($Cx - 5) ($Cy - 2) 1
+  Clear-Circle ($Cx + 5) ($Cy - 2) 1
+  Clear-ThickLine ($Cx - 5) ($Cy + 6) $Cx ($Cy + 8) 1
+  Clear-ThickLine $Cx ($Cy + 8) ($Cx + 6) ($Cy + 5) 1
+  Draw-Line $Cx ($Cy - 14) ($Cx - 4) ($Cy - 21)
+  Draw-Line $Cx ($Cy - 14) ($Cx + 4) ($Cy - 21)
+  Draw-Line ($Cx - 8) ($Cy - 14) ($Cx - 1) ($Cy - 18)
+  Draw-Line ($Cx + 8) ($Cy - 14) ($Cx + 1) ($Cy - 18)
 }
 
 function Draw-Text {
@@ -148,107 +353,66 @@ function Draw-CenteredText {
 
 function Draw-Frame {
   param([string]$Label)
-  Draw-Rect 4 5 59 58
-  Draw-Rect 7 13 56 55
-  Draw-Line 7 18 56 18
-  Draw-Line 7 49 56 49
-  for ($Y = 22; $Y -le 46; $Y += 6) {
-    Set-Pixel 11 $Y
-    Set-Pixel 53 $Y
-  }
-  for ($X = 15; $X -le 49; $X += 8) {
-    Set-Pixel $X 16
-    Set-Pixel $X 47
-  }
-  Draw-CenteredText "ROBCO" 31 7 1
-  Draw-CenteredText $Label 31 50 1
 }
 
 function Draw-Symbol {
   param([string]$Name)
   switch ($Name) {
     "CLOCK" {
-      Draw-Rect 13 24 50 38
-      Draw-Line 15 40 48 40
-      Draw-CenteredText "12:34" 31 29 1
-      Draw-Line 18 22 18 20
-      Draw-Line 44 22 44 20
-      Draw-Line 20 20 42 20
-      Draw-Line 52 25 55 23
-      Draw-Line 52 30 56 30
-      Draw-Line 52 35 55 37
+      Draw-VaultSmile 22 27
+      Draw-HeavyClock 45 37 14
+      Draw-Starburst 51 20 2 8 8
     }
     "WORLD" {
-      Draw-Circle 31 33 15
-      Draw-Line 16 33 46 33
-      Draw-Line 31 18 31 48
-      Draw-Line 22 21 22 45
-      Draw-Line 40 21 40 45
-      Fill-Circle 20 25 2
-      Fill-Circle 43 29 2
-      Fill-Circle 36 43 2
-      Draw-Line 20 25 43 29
-      Draw-Line 43 29 36 43
+      Draw-VaultSmile 20 28
+      Draw-HeavyGlobe 45 34 15
+      Draw-ThickLine 30 40 35 36 1
+      Draw-Line 38 22 50 45
     }
     "GLOBE" {
-      Draw-Circle 31 33 16
-      Draw-Circle 31 33 14
-      Draw-Line 15 33 47 33
-      Draw-Line 31 17 31 49
-      Draw-Line 23 19 23 47
-      Draw-Line 39 19 39 47
-      Draw-Line 28 19 22 27
-      Draw-Line 22 27 25 34
-      Draw-Line 25 34 20 41
-      Draw-Line 35 22 44 27
-      Draw-Line 44 27 40 36
-      Draw-Line 40 36 45 43
-      Draw-Line 18 22 44 48
+      Draw-HeavyGlobe 30 35 18
+      Draw-Ellipse 30 35 27 11
+      Draw-Rocket 49 20
+      Draw-Starburst 15 21 2 7 8
     }
     "ANALOG" {
-      Draw-Circle 31 33 16
-      Draw-Circle 31 33 13
-      Draw-Line 31 17 31 21
-      Draw-Line 31 45 31 49
-      Draw-Line 15 33 19 33
-      Draw-Line 43 33 47 33
-      Draw-Line 31 33 31 22
-      Draw-Line 31 33 42 37
-      Fill-Circle 31 33 2
+      Draw-VaultSmile 18 29
+      Draw-HeavyClock 43 34 16
+      Draw-Line 43 18 43 11
+      Draw-Line 35 12 51 12
     }
     "STOP" {
-      Draw-Rect 27 16 35 19
-      Draw-Line 31 20 31 22
-      Draw-Circle 31 35 15
-      Draw-Circle 31 35 12
-      Draw-Line 31 35 31 25
-      Draw-Line 31 35 39 40
-      Fill-Circle 31 35 2
-      Draw-Line 20 47 42 47
+      Draw-HeavyClock 32 34 20
+      Fill-Rect 25 9 39 14
+      Draw-Line 32 15 32 18
+      Clear-Circle 25 31 1
+      Clear-Circle 39 31 1
+      Clear-ThickLine 25 42 31 45 1
+      Clear-ThickLine 31 45 39 41 1
+      Draw-Line 20 52 12 58
+      Draw-Line 44 52 54 58
+      Draw-Line 17 20 9 16
+      Draw-Line 47 20 55 16
     }
     "COUNT" {
-      Draw-Rect 13 22 50 43
-      Draw-CenteredText "00:30" 31 27 1
-      Draw-Rect 17 37 46 40
-      Fill-Rect 18 38 34 39
-      Draw-Line 14 19 49 19
-      Draw-Line 18 46 44 46
-      Draw-Line 47 22 53 17
-      Draw-Line 47 23 54 23
-      Draw-Line 47 24 53 29
+      Fill-Circle 31 34 17
+      Clear-Circle 25 31 1
+      Clear-Circle 37 31 1
+      Clear-ThickLine 25 42 31 45 1
+      Clear-ThickLine 31 45 38 41 1
+      Clear-Rect 28 25 35 29
+      Draw-CenteredText "03" 31 25 1
+      Draw-ThickLine 42 23 52 14 1
+      Draw-Starburst 54 12 2 8 8
+      Draw-Line 17 24 8 18
+      Draw-Line 45 42 56 47
     }
     "POMO" {
-      Draw-Circle 24 33 11
-      Draw-Circle 39 33 11
-      Draw-Line 31 22 31 44
-      Draw-CenteredText "W" 24 31 1
-      Draw-CenteredText "B" 39 31 1
-      Draw-Line 20 20 42 20
-      Draw-Line 42 20 38 17
-      Draw-Line 42 20 38 23
-      Draw-Line 42 46 20 46
-      Draw-Line 20 46 24 43
-      Draw-Line 20 46 24 49
+      Draw-Tomato 29 36
+      Draw-HeavyClock 48 22 9
+      Draw-Line 16 42 8 48
+      Draw-Line 43 43 56 49
+      Draw-Starburst 16 20 2 7 7
     }
   }
 }

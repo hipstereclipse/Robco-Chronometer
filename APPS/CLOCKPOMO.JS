@@ -121,6 +121,12 @@
     screen.drawLine(x1, y1 + c, x1 + c, y1);
   }
 
+  function drawScanlines(w, hgt) {
+    var y;
+    screen.setColor(1);
+    for (y = 76; y < hgt - 44; y += 8) screen.drawLine(36, y, w - 37, y);
+  }
+
   function drawProgress(x0, y0, x1, y1, frac) {
     frac = Math.max(0, Math.min(1, frac));
     screen.setColor(1);
@@ -154,27 +160,25 @@
     var h = screen.getHeight ? screen.getHeight() : 320;
     screen.reset().clear();
     screen.setColor(1);
-    frame(22, 6, w - 23, h - 8, 12);
-    screen.drawLine(34, 34, w - 35, 34);
-    screen.drawLine(34, 58, w - 35, 58);
+    screen.drawLine(MARGIN, 42, w - MARGIN, 42);
+    screen.drawLine(MARGIN, 66, w - MARGIN, 66);
     screen.setColor(3);
-    setMono();
-    drawFit("ROBCO INDUSTRIES (TM)", MARGIN, 8, 240, -1);
-    drawFit(phase === 0 ? "WORK" : "BREAK", w - MARGIN, 8, 130, 1);
+    setVector(15);
+    drawFit("ROBCO TERMLINK", MARGIN, 12, 210, -1);
+    drawFit(phase === 0 ? "WORK" : "BREAK", w - MARGIN, 12, 130, 1);
+    drawFit("> WORK CYCLE REGULATOR", MARGIN, 47, 282, -1);
     screen.setColor(1);
-    setMono();
-    drawFit("TERMLINK CYCLE TIMER", MARGIN, 36, 240, -1);
-    drawFit(phase === 0 ? "WORK" : "BREAK", w - MARGIN, 36, 150, 1);
+    drawFit(phase === 0 ? "WORK" : "BREAK", w - MARGIN, 47, 152, 1);
   }
 
   function drawFooter() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var h = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
-    screen.drawLine(34, h - 34, w - 35, h - 34);
-    setVector(16);
-    drawFit("K1 START / ADJUST", MARGIN, h - 27, 210, -1);
-    drawFit("K2 STEP / RESET", w - MARGIN, h - 27, 210, 1);
+    screen.drawLine(MARGIN, h - 40, w - MARGIN, h - 40);
+    setVector(14);
+    drawFit("K1 START/ADJ", MARGIN, h - 31, 210, -1);
+    drawFit("K2 STEP/RST", w - MARGIN, h - 31, 210, 1);
   }
 
   function draw() {
@@ -184,8 +188,10 @@
     var cur = current();
     drawHeader();
     screen.setColor(1);
-    screen.drawRect(58, 74, 420, 254);
-    screen.drawLine(58, 180, 420, 180);
+    screen.drawRect(58, 78, 420, 256);
+    screen.drawLine(58, 178, 420, 178);
+    setMono();
+    drawFit("ADDR 0xBEEF // CYCLE CORE", 238, 86, 340, 0);
     screen.setColor(3);
     drawVectorFit(formatDuration(cur), 238, 124, 340, 64, 36, 0);
     drawProgress(94, 164, 386, 173, total ? cur / total : 0);

@@ -107,32 +107,36 @@
     screen.drawLine(x1, y1 + c, x1 + c, y1);
   }
 
+  function drawScanlines(w, hgt) {
+    var y;
+    screen.setColor(1);
+    for (y = 76; y < hgt - 44; y += 8) screen.drawLine(36, y, w - 37, y);
+  }
+
   function drawHeader() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.reset().clear();
     screen.setColor(1);
-    frame(22, 6, w - 23, hgt - 8, 12);
-    screen.drawLine(34, 34, w - 35, 34);
-    screen.drawLine(34, 58, w - 35, 58);
+    screen.drawLine(MARGIN, 42, w - MARGIN, 42);
+    screen.drawLine(MARGIN, 66, w - MARGIN, 66);
     screen.setColor(3);
-    setMono();
-    drawFit("ROBCO INDUSTRIES (TM)", MARGIN, 8, 240, -1);
-    drawFit("FIELD TEST", w - MARGIN, 8, 130, 1);
+    setVector(15);
+    drawFit("ROBCO TERMLINK", MARGIN, 12, 210, -1);
+    drawFit("FIELD TEST", w - MARGIN, 12, 130, 1);
+    drawFit("> PRECISION FIELD TIMER", MARGIN, 47, 282, -1);
     screen.setColor(1);
-    setMono();
-    drawFit("TERMLINK TIMER", MARGIN, 36, 240, -1);
-    drawFit("STOPWATCH", w - MARGIN, 36, 150, 1);
+    drawFit("STOPWATCH", w - MARGIN, 47, 152, 1);
   }
 
   function drawFooter() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
-    screen.drawLine(34, hgt - 34, w - 35, hgt - 34);
-    setVector(16);
-    drawFit("K1 START / LAP", MARGIN, hgt - 27, 200, -1);
-    drawFit("K2 RESET", w - MARGIN, hgt - 27, 200, 1);
+    screen.drawLine(MARGIN, hgt - 40, w - MARGIN, hgt - 40);
+    setVector(14);
+    drawFit("K1 START/LAP", MARGIN, hgt - 31, 200, -1);
+    drawFit("K2 RESET", w - MARGIN, hgt - 31, 200, 1);
   }
 
   function draw() {
@@ -142,8 +146,10 @@
     var cx = w / 2;
     drawHeader();
     screen.setColor(1);
-    screen.drawRect(58, 76, w - 58, 254);
-    screen.drawLine(58, 178, w - 58, 178);
+    screen.drawRect(58, 78, w - 58, 256);
+    screen.drawLine(58, 176, w - 58, 176);
+    setMono();
+    drawFit("ADDR 0xF4F0 // ELAPSED", cx, 86, w - 136, 0);
     // Main elapsed time.
     screen.setColor(3);
     drawVectorFit(formatMs(ms), cx, 122, w - 136, 60, 34, 0);

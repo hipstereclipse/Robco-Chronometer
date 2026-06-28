@@ -35,6 +35,12 @@
     screen.drawLine(x1, y1 + c, x1 + c, y1);
   }
 
+  function drawScanlines(w, hgt) {
+    var y;
+    screen.setColor(1);
+    for (y = 76; y < hgt - 44; y += 8) screen.drawLine(36, y, w - 37, y);
+  }
+
   function setMono() {
     try {
       screen.setFont("Monofonto23");
@@ -137,42 +143,40 @@
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.reset().clear();
     screen.setColor(1);
-    frame(22, 6, w - 23, hgt - 8, 12);
-    screen.drawLine(34, 34, w - 35, 34);
-    screen.drawLine(34, 58, w - 35, 58);
+    screen.drawLine(MARGIN, 42, w - MARGIN, 42);
+    screen.drawLine(MARGIN, 66, w - MARGIN, 66);
     screen.setColor(3);
-    setMono();
-    drawFit("ROBCO INDUSTRIES (TM)", MARGIN, 8, 240, -1);
-    drawFit(formatTime(d, false), w - MARGIN, 8, 120, 1);
+    setVector(15);
+    drawFit("ROBCO TERMLINK", MARGIN, 12, 210, -1);
+    drawFit(formatTime(d, false), w - MARGIN, 12, 112, 1);
+    drawFit("> CHRONOMETER CONTROL", MARGIN, 47, 282, -1);
     screen.setColor(1);
-    setMono();
-    drawFit("TERMLINK CHRONOMETER", MARGIN, 36, 240, -1);
-    drawFit("MODE " + layouts[clockLayout], w - MARGIN, 36, 150, 1);
+    drawFit("MODE " + layouts[clockLayout], w - MARGIN, 47, 152, 1);
   }
 
   function drawFooter() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
-    screen.drawLine(34, hgt - 34, w - 35, hgt - 34);
-    setVector(16);
+    screen.drawLine(MARGIN, hgt - 40, w - MARGIN, hgt - 40);
+    setVector(14);
     screen.setColor(1);
-    drawFit("K1 LAYOUT  K2 FORMAT", MARGIN, hgt - 27, 218, -1);
+    drawFit("K1 LAYOUT  K2 FMT", MARGIN, hgt - 31, 218, -1);
     screen.setColor(locked ? 3 : 1);
-    drawFit(locked ? "LOCKED  K1 UNLOCK" : "K1 PRESS LOCK", w - MARGIN, hgt - 27, 218, 1);
+    drawFit(locked ? "LOCKED  K1 UNLOCK" : "K1 LOCK", w - MARGIN, hgt - 31, 218, 1);
   }
 
   function drawRail() {
     screen.setColor(1);
-    screen.drawRect(306, 76, 454, 248);
-    screen.drawLine(306, 104, 454, 104);
+    screen.drawRect(306, 78, 454, 252);
+    screen.drawLine(306, 102, 454, 102);
     setMono();
-    drawFit("DISPLAY CFG", 380, 84, 136, 0);
-    drawFit("> LAYOUT " + layouts[clockLayout], 318, 116, 124, -1);
-    drawFit("> SECONDS " + (showSeconds ? "ON" : "OFF"), 318, 140, 124, -1);
-    drawFit("> FORMAT " + (hour24 ? "24H" : "12H"), 318, 164, 124, -1);
-    drawFit("SIG RTC OK", 318, 196, 124, -1);
-    drawFit("ADDR 0x2077", 318, 220, 124, -1);
+    drawFit("CONFIG 0x7A1", 380, 84, 136, 0);
+    drawFit("> MODE " + layouts[clockLayout], 318, 116, 124, -1);
+    drawFit("> SEC " + (showSeconds ? "ENABLED" : "DISABLED"), 318, 140, 124, -1);
+    drawFit("> FMT " + (hour24 ? "24-HOUR" : "12-HOUR"), 318, 164, 124, -1);
+    drawFit("RTC [====] OK", 318, 196, 124, -1);
+    drawFit("LOCK " + (locked ? "ENGAGED" : "OPEN"), 318, 220, 124, -1);
   }
 
   function draw() {
@@ -182,22 +186,35 @@
     drawHeader(d);
     screen.setColor(3);
     if (clockLayout === 0) {
-      drawVectorFit(formatTime(d, showSeconds), w / 2, 146, w - (MARGIN * 2), showSeconds ? 54 : 72, 36, 0);
+      screen.setColor(1);
+      screen.drawRect(42, 86, w - 43, 244);
+      screen.drawLine(42, 112, w - 43, 112);
+      setMono();
+      drawFit("LOCAL TIMEBASE 0xC1A0", w / 2, 92, w - 96, 0);
+      screen.setColor(3);
+      drawVectorFit(formatTime(d, showSeconds), w / 2, 148, w - (MARGIN * 2), showSeconds ? 54 : 72, 36, 0);
       screen.setColor(1);
       setMono();
-      drawFit("ROBCO LOCAL TIMEBASE", w / 2, 216, w - (MARGIN * 2), 0);
+      drawFit("SYNC [========] VAULT RTC", w / 2, 216, w - (MARGIN * 2), 0);
     } else {
-      drawVectorFit(formatTime(d, showSeconds), 172, 132, 258, showSeconds ? 46 : 62, 30, 0);
+      screen.setColor(1);
+      screen.drawRect(42, 78, 292, 252);
+      screen.drawLine(42, 102, 292, 102);
       setMono();
-      drawFit(formatDate(d), 172, 180, 258, 0);
+      drawFit("ADDR 0xF4F0", 54, 84, 100, -1);
+      drawFit("LOCAL TIMEBASE", 280, 84, 136, 1);
+      screen.setColor(3);
+      drawVectorFit(formatTime(d, showSeconds), 172, 132, 238, showSeconds ? 46 : 62, 30, 0);
+      setMono();
+      drawFit(formatDate(d), 172, 180, 238, 0);
       if (clockLayout >= 2) {
         screen.setColor(1);
         setMono();
-        drawFit("RTC BUS  " + formatOffset(), 172, 210, 258, 0);
+        drawFit("RTC BUS  " + formatOffset(), 172, 210, 238, 0);
       }
       if (clockLayout >= 3) {
         setMono();
-        drawFit("TERMLINK STATUS NOMINAL", 172, 236, 258, 0);
+        drawFit("TERMLINK STATUS NOMINAL", 172, 236, 238, 0);
       }
       drawRail();
     }

@@ -59,6 +59,12 @@
     screen.drawLine(x1, y1 + c, x1 + c, y1);
   }
 
+  function drawScanlines(w, hgt) {
+    var y;
+    screen.setColor(1);
+    for (y = 76; y < hgt - 44; y += 8) screen.drawLine(36, y, w - 37, y);
+  }
+
   function setMono() {
     try {
       screen.setFont("Monofonto23");
@@ -434,29 +440,27 @@
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.reset().clear();
     screen.setColor(1);
-    frame(22, 6, w - 23, hgt - 8, 12);
-    screen.drawLine(34, 34, w - 35, 34);
-    screen.drawLine(34, 58, w - 35, 58);
+    screen.drawLine(MARGIN, 42, w - MARGIN, 42);
+    screen.drawLine(MARGIN, 66, w - MARGIN, 66);
     screen.setColor(3);
-    setMono();
-    drawFit("ROBCO INDUSTRIES (TM)", MARGIN, 8, 240, -1);
-    drawFit(formatTime(d), w - MARGIN, 8, 90, 1);
+    setVector(15);
+    drawFit("ROBCO TERMLINK", MARGIN, 12, 210, -1);
+    drawFit(formatTime(d), w - MARGIN, 12, 90, 1);
+    drawFit("> ORBITAL DAY/NIGHT MAP", MARGIN, 47, 282, -1);
     screen.setColor(1);
-    setMono();
-    drawFit("TERMLINK ORBITAL MAP", MARGIN, 36, 240, -1);
-    drawFit("HOME " + shortOffset(zoneOffset(homeIndex)), w - MARGIN, 36, 140, 1);
+    drawFit("HOME " + shortOffset(zoneOffset(homeIndex)), w - MARGIN, 47, 140, 1);
   }
 
   function drawFooter() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
-    screen.drawLine(34, hgt - 34, w - 35, hgt - 34);
-    setVector(16);
+    screen.drawLine(MARGIN, hgt - 40, w - MARGIN, hgt - 40);
+    setVector(14);
     screen.setColor(1);
-    drawFit("K1/K2 TURN BANDS", MARGIN, hgt - 27, 200, -1);
+    drawFit("K1/K2 BANDS", MARGIN, hgt - 31, 200, -1);
     screen.setColor(locked ? 3 : 1);
-    drawFit(locked ? "LOCKED  K1 UNLOCK" : "K1 PRESS LOCK", w - MARGIN, hgt - 27, 224, 1);
+    drawFit(locked ? "LOCKED  K1 UNLOCK" : "K1 LOCK", w - MARGIN, hgt - 31, 224, 1);
   }
 
   function draw() {
@@ -469,7 +473,7 @@
     var lon = zoneLon(zi);
     var lat = 0;
     var zd = zoneDate(zi, utc);
-    var cx = 150, cy = 166, r = 104;
+    var cx = 150, cy = 170, r = 96;
     var i;
     setSun(lat, lon, utc);
     var elev = Math.asin(Math.max(-1, Math.min(1, sunZ))) * 180 / Math.PI;
@@ -496,23 +500,23 @@
     line(cx, cy + 3, cx, cy + 9);
     if (sunZ > 0) screen.drawCircle(cx + (sunX * r), cy - (sunY * r), 3);
     setMono();
-    drawFit("ROBCO TZ RELAY", 348, 72, 170, 0);
+    drawFit("TZ RELAY // 0xA0", 350, 76, 170, 0);
     screen.setColor(1);
-    screen.drawRect(272, 96, 430, 280);
-    screen.drawLine(272, 140, 430, 140);
+    screen.drawRect(272, 90, 430, 270);
+    screen.drawLine(272, 134, 430, 134);
     setMono();
-    drawFit(label, 351, 101, 146, 0);
-    drawFit(place, 351, 121, 146, 0);
+    drawFit(label, 351, 96, 146, 0);
+    drawFit(place, 351, 116, 146, 0);
     screen.setColor(3);
-    drawVectorFit(formatTime(zd), 351, 164, 146, 30, 22, 0);
+    drawVectorFit(formatTime(zd), 351, 156, 146, 30, 22, 0);
     screen.setColor(1);
     setMono();
-    drawFit(monthNames[zd.month] + " " + zd.date, 351, 192, 146, 0);
-    drawFit("MERIDIAN " + formatLon(lon), 351, 216, 146, 0);
-    drawFit("BAND " + (zi + 1) + "/" + zones.length, 351, 240, 146, 0);
+    drawFit(monthNames[zd.month] + " " + zd.date, 351, 186, 146, 0);
+    drawFit("MERIDIAN " + formatLon(lon), 351, 210, 146, 0);
+    drawFit("BAND " + (zi + 1) + "/" + zones.length, 351, 234, 146, 0);
     screen.setColor(elev >= 0 ? 3 : 1);
     setMono();
-    drawFit(phase + " " + (elev >= 0 ? "+" : "-") + Math.round(Math.abs(elev)), 351, 260, 146, 0);
+    drawFit(phase + " " + (elev >= 0 ? "+" : "-") + Math.round(Math.abs(elev)), 351, 252, 146, 0);
     drawFooter();
     if (screen.flip) screen.flip();
   }

@@ -40,6 +40,12 @@
     screen.drawLine(x1, y1 + c, x1 + c, y1);
   }
 
+  function drawScanlines(w, hgt) {
+    var y;
+    screen.setColor(1);
+    for (y = 76; y < hgt - 44; y += 8) screen.drawLine(36, y, w - 37, y);
+  }
+
   function setMono() {
     try {
       screen.setFont("Monofonto23");
@@ -119,29 +125,27 @@
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.reset().clear();
     screen.setColor(1);
-    frame(22, 6, w - 23, hgt - 8, 12);
-    screen.drawLine(34, 34, w - 35, 34);
-    screen.drawLine(34, 58, w - 35, 58);
+    screen.drawLine(MARGIN, 42, w - MARGIN, 42);
+    screen.drawLine(MARGIN, 66, w - MARGIN, 66);
     screen.setColor(3);
-    setMono();
-    drawFit("ROBCO INDUSTRIES (TM)", MARGIN, 8, 240, -1);
-    drawFit(pad2(d.getHours()) + ":" + pad2(d.getMinutes()), w - MARGIN, 8, 90, 1);
+    setVector(15);
+    drawFit("ROBCO TERMLINK", MARGIN, 12, 210, -1);
+    drawFit(pad2(d.getHours()) + ":" + pad2(d.getMinutes()), w - MARGIN, 12, 90, 1);
+    drawFit("> VACUUM-TUBE DIAL MODULE", MARGIN, 47, 282, -1);
     screen.setColor(1);
-    setMono();
-    drawFit("TERMLINK ANALOG MODULE", MARGIN, 36, 240, -1);
-    drawFit("FACE " + styleNames[analogStyle], w - MARGIN, 36, 150, 1);
+    drawFit("FACE " + styleNames[analogStyle], w - MARGIN, 47, 152, 1);
   }
 
   function drawFooter() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
-    screen.drawLine(34, hgt - 34, w - 35, hgt - 34);
-    setVector(16);
+    screen.drawLine(MARGIN, hgt - 40, w - MARGIN, hgt - 40);
+    setVector(14);
     screen.setColor(1);
-    drawFit("K1 FACE  K2 DATA", MARGIN, hgt - 27, 200, -1);
+    drawFit("K1 FACE  K2 DATA", MARGIN, hgt - 31, 200, -1);
     screen.setColor(locked ? 3 : 1);
-    drawFit(locked ? "LOCKED  K1 UNLOCK" : "K1 PRESS LOCK", w - MARGIN, hgt - 27, 224, 1);
+    drawFit(locked ? "LOCKED  K1 UNLOCK" : "K1 LOCK", w - MARGIN, hgt - 31, 224, 1);
   }
 
   // A solid, slightly-filled hub built from concentric circles (no fillCircle).
@@ -284,10 +288,10 @@
 
   function drawPanel() {
     screen.setColor(1);
-    screen.drawRect(274, 70, 446, 256);
-    line(274, 96, 446, 96);
+    screen.drawRect(274, 76, 446, 260);
+    line(274, 102, 446, 102);
     setMono();
-    drawFit("ROBCO " + styleNames[analogStyle], 360, 76, 160, 0);
+    drawFit("DIAL PLATE 0xB4", 360, 82, 160, 0);
   }
 
   function draw() {
@@ -303,14 +307,14 @@
     drawPanel();
     if (analogDetail) {
       screen.setColor(3);
-      drawVectorFit(pad2(d.getHours()) + ":" + pad2(m) + ":" + pad2(s), 360, 130, 160, 28, 20, 0);
+      drawVectorFit(pad2(d.getHours()) + ":" + pad2(m) + ":" + pad2(s), 360, 132, 160, 28, 20, 0);
       setMono();
-      drawFit(days[d.getDay()], 360, 158, 160, 0);
+      drawFit(days[d.getDay()], 360, 160, 160, 0);
       screen.setColor(1);
       setMono();
-      drawFit(months[d.getMonth()] + " " + d.getDate(), 360, 188, 160, 0);
-      drawFit("" + d.getFullYear(), 360, 214, 160, 0);
-      drawFit("FACE " + styleNames[analogStyle], 360, 238, 160, 0);
+      drawFit(months[d.getMonth()] + " " + d.getDate(), 360, 190, 160, 0);
+      drawFit("" + d.getFullYear(), 360, 216, 160, 0);
+      drawFit("FACE " + styleNames[analogStyle], 360, 240, 160, 0);
     } else {
       screen.setColor(1);
       setMono();
