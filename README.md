@@ -40,8 +40,9 @@ selected zone's UTC offset and DST state.
 ![World clock relay with DST](PREVIEWS/03-world-dst-relay.png)
 
 ### Globe
-An orthographic globe centered on the selected city, with a lat/long graticule, the city's
-time-zone meridian, and a **live day/night terminator** computed from the real solar position.
+An orthographic globe centered on the selected city, with low-poly **continent coastlines**, a
+lat/long graticule, the city's time-zone meridian, and a **live day/night terminator** computed
+from the real solar position.
 The sub-solar point ("high noon") is marked when visible, and the side panel reports the selected
 location's local time plus its solar phase (`DAYLIGHT` / `TWILIGHT` / `NIGHT`) and sun elevation.
 

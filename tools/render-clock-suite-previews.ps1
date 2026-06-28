@@ -337,20 +337,22 @@ Draw-Screen "03-world-dst-relay.png" "WORLD" {
   Draw-Text $G "NYC EDT" $FontSmall $BrushDim 8 242 220 "Center"
   Draw-Text $G "UTC-04:00 SUMMER" $FontSmall $BrushDim 8 266 220 "Center"
   $G.DrawLine($PenDim, 242, 66, 242, 282)
-  Draw-Text $G "WASTELAND RELAY" $FontSmall $BrushDim 260 66 200 "Left"
+  Draw-Text $G "WASTELAND RELAY" $FontSmall $BrushDim 252 60 210 "Left"
+  # Three fixed columns -- city (left), zone (left @352), time (right edge @466) --
+  # mirroring the smaller-font relay rows in CLOCKWORLD.JS so they never collide.
   $Rows = @(
-    @("NYC", "EDT", "12:34", ""),
-    @("CHI", "CDT", "11:34", ""),
-    @("DEN", "MDT", "10:34", ""),
-    @("L.A.", "PDT", "09:34", ""),
-    @("LONDON", "BST", "17:34", "")
+    @("NYC", "EDT", "12:34"),
+    @("CHI", "CDT", "11:34"),
+    @("DEN", "MDT", "10:34"),
+    @("L.A.", "PDT", "09:34"),
+    @("LONDON", "BST", "17:34")
   )
   for ($I = 0; $I -lt $Rows.Count; $I++) {
-    $Y = 98 + ($I * 36)
+    $Y = 104 + ($I * 34)
     $Brush = if ($I -eq 0) { $BrushGreen } else { $BrushDim }
-    Draw-Text $G $Rows[$I][0] $FontMono $Brush 260 ($Y - 11) 80 "Left"
-    Draw-Text $G $Rows[$I][1] $FontMono $Brush 325 ($Y - 11) 70 "Center"
-    Draw-Text $G $Rows[$I][2] $FontMono $Brush 386 ($Y - 11) 80 "Right"
+    Draw-Text $G $Rows[$I][0] $FontMono $Brush 252 ($Y - 10) 100 "Left"
+    Draw-Text $G $Rows[$I][1] $FontMono $Brush 352 ($Y - 10) 60 "Left"
+    Draw-Text $G $Rows[$I][2] $FontMono $Brush 386 ($Y - 10) 80 "Right"
   }
 } "K1 ZONES" "K2 ZONES"
 

@@ -193,21 +193,34 @@
     return Math.abs(lat) + ns + " " + Math.abs(lon) + ew;
   }
 
-  function project(cx, cy, r, centerLat, centerLon, lon, lat) {
-    var dlon = wrapLon(lon - centerLon) * Math.PI / 180;
-    var phi = lat * Math.PI / 180;
+  // Projection center, cached once per draw so project() avoids recomputing the
+  // center's sin/cos (and any trig at all for it) for every one of the hundreds
+  // of graticule/coastline points -- that redundant trig was the redraw stall.
+  var ctrLon = 0, sinP0 = 0, cosP0 = 1;
+
+  function setCenter(centerLat, centerLon) {
     var p0 = centerLat * Math.PI / 180;
-    var cosc = Math.sin(p0) * Math.sin(phi) + Math.cos(p0) * Math.cos(phi) * Math.cos(dlon);
+    ctrLon = centerLon;
+    sinP0 = Math.sin(p0);
+    cosP0 = Math.cos(p0);
+  }
+
+  function project(cx, cy, r, lon, lat) {
+    var dlon = wrapLon(lon - ctrLon) * Math.PI / 180;
+    var phi = lat * Math.PI / 180;
+    var sphi = Math.sin(phi), cphi = Math.cos(phi);
+    var cdl = Math.cos(dlon), sdl = Math.sin(dlon);
+    var cosc = (sinP0 * sphi) + (cosP0 * cphi * cdl);
     if (cosc < 0) return false;
-    px = cx + (r * Math.cos(phi) * Math.sin(dlon));
-    py = cy - (r * ((Math.cos(p0) * Math.sin(phi)) - (Math.sin(p0) * Math.cos(phi) * Math.cos(dlon))));
+    px = cx + (r * cphi * sdl);
+    py = cy - (r * ((cosP0 * sphi) - (sinP0 * cphi * cdl)));
     return true;
   }
 
-  function drawMeridian(cx, cy, r, centerLat, centerLon, lon) {
+  function drawMeridian(cx, cy, r, lon) {
     var lat, have = false, lx = 0, ly = 0;
     for (lat = -90; lat <= 90; lat += 10) {
-      if (project(cx, cy, r, centerLat, centerLon, lon, lat)) {
+      if (project(cx, cy, r, lon, lat)) {
         if (have) line(lx, ly, px, py);
         lx = px; ly = py; have = true;
       } else {
@@ -216,14 +229,55 @@
     }
   }
 
-  function drawParallel(cx, cy, r, centerLat, centerLon, lat) {
+  function drawParallel(cx, cy, r, lat) {
     var lon, have = false, lx = 0, ly = 0;
-    for (lon = centerLon - 180; lon <= centerLon + 180; lon += 10) {
-      if (project(cx, cy, r, centerLat, centerLon, lon, lat)) {
+    for (lon = ctrLon - 180; lon <= ctrLon + 180; lon += 10) {
+      if (project(cx, cy, r, lon, lat)) {
         if (have) line(lx, ly, px, py);
         lx = px; ly = py; have = true;
       } else {
         have = false;
+      }
+    }
+  }
+
+  // Low-poly coastline traces (lon,lat pairs) tuned for the 104 px globe; these
+  // mirror $LandShapes in tools/render-clock-suite-previews.ps1 -- keep in sync.
+  var land = [
+    [-168,72,-158,71,-151,67,-143,69,-136,59,-130,55,-127,50,-124,49,-124,43,-121,38,-117,33,-112,29,-106,23,-98,19,-91,18,-88,21,-84,22,-81,25,-80,29,-81,31,-79,33,-76,36,-75,39,-71,42,-67,45,-61,46,-57,50,-60,54,-67,56,-76,57,-82,62,-91,63,-96,68,-109,69,-121,71,-134,70,-145,72,-158,74,-168,72],
+    [-95,59,-88,58,-82,55,-78,51,-83,49,-90,52,-95,59],
+    [-53,83,-37,83,-23,79,-17,72,-23,66,-36,60,-49,59,-58,64,-63,71,-60,78,-53,83],
+    [-81,12,-75,11,-69,9,-63,3,-59,-4,-54,-9,-50,-18,-44,-23,-41,-33,-46,-39,-50,-50,-58,-55,-65,-54,-70,-49,-73,-42,-76,-32,-78,-20,-81,-7,-81,4,-81,12],
+    [-10,36,-9,43,-5,50,0,51,4,58,12,56,18,60,25,66,32,70,40,68,33,60,39,55,31,50,23,46,17,43,12,45,5,43,0,38,-6,36,-10,36],
+    [28,41,36,38,44,36,51,31,60,29,67,25,76,31,85,28,94,23,100,13,106,22,116,22,122,30,132,31,139,35,145,42,155,44,166,51,159,59,143,62,128,70,105,72,82,72,63,67,52,62,43,56,33,57,28,50,28,41],
+    [-17,35,-6,36,5,36,16,33,25,31,32,25,35,19,43,12,51,4,49,-5,43,-12,40,-22,33,-31,25,-34,18,-35,11,-31,5,-22,-3,-11,-10,2,-16,14,-17,25,-17,35],
+    [34,29,43,29,51,25,58,17,55,13,47,12,42,16,38,24,34,29],
+    [68,24,73,19,78,8,82,7,88,21,80,27,73,26,68,24],
+    [93,22,101,20,108,16,109,10,105,6,99,9,96,15,93,22],
+    [95,6,105,4,117,1,126,-3,132,-5,124,-8,112,-5,104,-6,97,0,95,6],
+    [132,-2,142,-4,153,-5,150,-10,139,-9,132,-2],
+    [112,-11,116,-21,114,-29,121,-35,134,-39,146,-43,153,-37,153,-28,147,-20,138,-15,128,-13,119,-14,112,-11],
+    [48,-12,51,-20,49,-26,44,-25,43,-18,48,-12],
+    [-8,58,-3,56,-2,51,-5,50,-8,52,-8,58],
+    [-25,66,-14,65,-14,63,-24,63,-25,66],
+    [130,34,135,32,141,36,145,43,140,45,133,40,130,34],
+    [166,-35,178,-38,177,-45,169,-47,166,-42,166,-35],
+    [145,-40,149,-43,146,-45,143,-43,145,-40],
+    [-180,-68,-160,-71,-135,-70,-110,-73,-80,-71,-55,-74,-25,-71,0,-70,32,-73,62,-70,95,-72,130,-69,160,-72,180,-68]
+  ];
+
+  function drawCoast(cx, cy, r) {
+    var s, i, pts, have, lx = 0, ly = 0;
+    for (s = 0; s < land.length; s++) {
+      pts = land[s];
+      have = false;
+      for (i = 0; i < pts.length; i += 2) {
+        if (project(cx, cy, r, pts[i], pts[i + 1])) {
+          if (have) line(lx, ly, px, py);
+          lx = px; ly = py; have = true;
+        } else {
+          have = false;
+        }
       }
     }
   }
@@ -296,14 +350,17 @@
     setSun(z[6], z[5], utc);
     var elev = Math.asin(Math.max(-1, Math.min(1, sunZ))) * 180 / Math.PI;
     var phase = elev >= 0 ? "DAYLIGHT" : (elev >= -12 ? "TWILIGHT" : "NIGHT");
+    setCenter(z[6], z[5]);
     drawHeader(zd);
     screen.setColor(3);
     screen.drawCircle(cx, cy, r);
     screen.drawCircle(cx, cy, r - 2);
     screen.setColor(1);
-    for (i = -60; i <= 60; i += 30) drawParallel(cx, cy, r, z[6], z[5], i);
-    for (i = -180; i < 180; i += 30) drawMeridian(cx, cy, r, z[6], z[5], i);
-    drawMeridian(cx, cy, r, z[6], z[5], wrapLon((zoneOffset(worldIndex, utc) / 60) * 15));
+    for (i = -60; i <= 60; i += 30) drawParallel(cx, cy, r, i);
+    for (i = -180; i < 180; i += 30) drawMeridian(cx, cy, r, i);
+    drawMeridian(cx, cy, r, wrapLon((zoneOffset(worldIndex, utc) / 60) * 15));
+    screen.setColor(3);
+    drawCoast(cx, cy, r);
     drawTerminator(cx, cy, r);
     screen.setColor(3);
     screen.drawCircle(cx, cy, 5);

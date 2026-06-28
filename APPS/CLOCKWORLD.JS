@@ -233,15 +233,18 @@
     setMono().setFontAlign(0, -1).drawString(zones[worldIndex][0] + " " + zoneAbbr(worldIndex, utc), 118, 242);
     setMono().setFontAlign(0, -1).drawString(formatOffset(zoneOffset(worldIndex, utc)) + " " + (zoneIsDst(worldIndex, utc) ? "SUMMER" : "STANDARD"), 118, 266);
     screen.drawLine(242, 66, 242, 282);
-    setMono().setFontAlign(-1, -1).drawString("WASTELAND RELAY", 260, 66);
+    setMono().setFontAlign(-1, -1).drawString("WASTELAND RELAY", 252, 60);
+    // The relay rows use a smaller vector font so city + zone + time fit in three
+    // fixed columns without colliding -- Monofonto23 is too wide here and the long
+    // city names (ADELAIDE/AUCKLAND) ran straight into the zone abbreviation.
     for (i = 0; i < 5; i++) {
       var zi = (worldIndex + i) % zones.length;
       var zd = zoneDate(zi, utc);
-      var y = 98 + (i * 36);
+      var y = 104 + (i * 34);
       screen.setColor(i === 0 ? 3 : 1);
-      setMono().setFontAlign(-1, 0).drawString(zones[zi][0], 260, y);
-      setMono().setFontAlign(0, 0).drawString(zoneAbbr(zi, utc), 344, y);
-      setMono().setFontAlign(1, 0).drawString(formatTime(zd, true), w - 14, y);
+      setVector(16).setFontAlign(-1, 0).drawString(zones[zi][0], 252, y);
+      setVector(16).setFontAlign(-1, 0).drawString(zoneAbbr(zi, utc), 352, y);
+      setVector(16).setFontAlign(1, 0).drawString(formatTime(zd, true), w - 14, y);
     }
     drawFooter();
     if (screen.flip) screen.flip();
