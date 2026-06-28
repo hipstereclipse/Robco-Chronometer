@@ -7,6 +7,9 @@
   var MS_PER_MIN = 60000;
   var MS_PER_DAY = 86400000;
   var worldIndex = 12;
+  var homeIndex = 12;
+  var locked = false;
+  var dirty = false;
   var monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
   // Whole-hour UTC bands only. The globe centers on each band meridian.
   var zones = [-720, -660, -600, -540, -480, -420, -360, -300, -240, -180, -120, -60, 0, 60, 120, 180, 240, 300, 360, 420, 480, 540, 600, 660, 720, 780, 840];
@@ -41,6 +44,19 @@
 
   function line(x1, y1, x2, y2) {
     screen.drawLine(Math.round(x1), Math.round(y1), Math.round(x2), Math.round(y2));
+  }
+
+  // Beveled HUD frame: the cut corners trace the device's rounded bezel so the
+  // border reads as a natural panel instead of a hard rectangle.
+  function frame(x1, y1, x2, y2, c) {
+    screen.drawLine(x1 + c, y1, x2 - c, y1);
+    screen.drawLine(x2 - c, y1, x2, y1 + c);
+    screen.drawLine(x2, y1 + c, x2, y2 - c);
+    screen.drawLine(x2, y2 - c, x2 - c, y2);
+    screen.drawLine(x2 - c, y2, x1 + c, y2);
+    screen.drawLine(x1 + c, y2, x1, y2 - c);
+    screen.drawLine(x1, y2 - c, x1, y1 + c);
+    screen.drawLine(x1, y1 + c, x1 + c, y1);
   }
 
   function setMono() {
@@ -93,6 +109,25 @@
   function sound(id) {
     try {
       if (typeof Pip !== "undefined" && Pip.audioBuiltin) Pip.audioBuiltin(id);
+    } catch (e) {
+    }
+  }
+
+  function loadSettings() {
+    try {
+      var p = String(require("fs").readFileSync("USER/ROBGLOBE.SET")).split(",");
+      if (p.length >= 2) {
+        worldIndex = safeZone(p[0] | 0);
+        locked = p[1] !== "0";
+      }
+    } catch (e) {
+    }
+  }
+
+  function saveSettings() {
+    if (!dirty) return;
+    try {
+      require("fs").writeFileSync("USER/ROBGLOBE.SET", [worldIndex, locked ? 1 : 0].join(","));
     } catch (e) {
     }
   }
@@ -197,6 +232,12 @@
 
   function zoneLon(i) {
     return wrapLon(zoneOffset(i, 0) / 4);
+  }
+
+  // Compact whole-hour offset for the tight header rail, e.g. "UTC-4" / "UTC+9".
+  function shortOffset(minutes) {
+    if (minutes === 0) return "UTC";
+    return "UTC" + (minutes > 0 ? "+" : "-") + Math.floor(Math.abs(minutes) / 60);
   }
 
   function formatTime(d) {
@@ -385,32 +426,37 @@
     }
   }
 
+  // d is the user's HOME-zone date: the top-right corner always reports the
+  // device's own timezone, while the band selected by the knob is shown in the
+  // middle relay panel.
   function drawHeader(d) {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.reset().clear();
     screen.setColor(1);
-    screen.drawRect(22, 6, w - 23, hgt - 8);
-    screen.drawLine(22, 34, w - 23, 34);
-    screen.drawLine(22, 58, w - 23, 58);
+    frame(22, 6, w - 23, hgt - 8, 12);
+    screen.drawLine(34, 34, w - 35, 34);
+    screen.drawLine(34, 58, w - 35, 58);
     screen.setColor(3);
     setMono();
-    drawFit("ROBCO INDUSTRIES (TM)", MARGIN, 8, 260, -1);
+    drawFit("ROBCO INDUSTRIES (TM)", MARGIN, 8, 240, -1);
     drawFit(formatTime(d), w - MARGIN, 8, 90, 1);
     screen.setColor(1);
     setMono();
-    drawFit("TERMLINK ORBITAL MAP", MARGIN, 36, 250, -1);
-    drawFit("TZ " + (worldIndex + 1) + "/" + zones.length, w - MARGIN, 36, 138, 1);
+    drawFit("TERMLINK ORBITAL MAP", MARGIN, 36, 240, -1);
+    drawFit("HOME " + shortOffset(zoneOffset(homeIndex)), w - MARGIN, 36, 140, 1);
   }
 
   function drawFooter() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
-    screen.drawLine(22, hgt - 34, w - 23, hgt - 34);
-    setMono();
-    drawFit("K1 TZ BAND +/-", MARGIN, hgt - 24, 190, -1);
-    drawFit("K2 TZ BAND +/-", w - MARGIN, hgt - 24, 190, 1);
+    screen.drawLine(34, hgt - 34, w - 35, hgt - 34);
+    setVector(16);
+    screen.setColor(1);
+    drawFit("K1/K2 TURN BANDS", MARGIN, hgt - 27, 200, -1);
+    screen.setColor(locked ? 3 : 1);
+    drawFit(locked ? "LOCKED  K1 UNLOCK" : "K1 PRESS LOCK", w - MARGIN, hgt - 27, 224, 1);
   }
 
   function draw() {
@@ -429,7 +475,7 @@
     var elev = Math.asin(Math.max(-1, Math.min(1, sunZ))) * 180 / Math.PI;
     var phase = elev >= 0 ? "DAYLIGHT" : (elev >= -12 ? "TWILIGHT" : "NIGHT");
     setCenter(lat, lon);
-    drawHeader(zd);
+    drawHeader(zoneDate(homeIndex, utc));
     screen.setColor(3);
     screen.drawCircle(cx, cy, r);
     screen.drawCircle(cx, cy, r - 2);
@@ -478,22 +524,39 @@
     }
   }
 
-  function rotate(dir) {
+  function turnBand(dir) {
+    worldIndex = wrap(safeZone(worldIndex) + dir, zones.length);
+    dirty = true;
+    sound("CLICK");
+    safeDraw();
+  }
+
+  // Knob press toggles the band lock (frozen view); turning is ignored while
+  // locked so the displayed band can't be nudged by accident.
+  function onKnob1(dir) {
     dir = dir | 0;
-    if (dir !== 0) {
-      worldIndex = wrap(safeZone(worldIndex) + dir, zones.length);
-      sound("CLICK");
-      safeDraw();
-    } else {
+    if (dir === 0) {
+      locked = !locked;
+      dirty = true;
       sound("OK");
+      safeDraw();
+    } else if (!locked) {
+      turnBand(dir);
     }
   }
 
-  worldIndex = localZoneIndex();
+  function onKnob2(dir) {
+    dir = dir | 0;
+    if (dir !== 0 && !locked) turnBand(dir);
+  }
+
+  homeIndex = localZoneIndex();
+  worldIndex = homeIndex;
+  loadSettings();
 
   if (typeof Pip !== "undefined") {
-    Pip.on("knob1", rotate);
-    Pip.on("knob2", rotate);
+    Pip.on("knob1", onKnob1);
+    Pip.on("knob2", onKnob2);
   }
   ticker = setInterval(safeDraw, 60000);
   safeDraw();
@@ -504,9 +567,10 @@
     fullscreen: true,
     remove: function() {
       if (ticker) clearInterval(ticker);
+      saveSettings();
       if (typeof Pip !== "undefined") {
-        Pip.removeListener("knob1", rotate);
-        Pip.removeListener("knob2", rotate);
+        Pip.removeListener("knob1", onKnob1);
+        Pip.removeListener("knob2", onKnob2);
       }
     }
   };

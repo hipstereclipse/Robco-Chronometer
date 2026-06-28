@@ -37,16 +37,16 @@ function Draw-Header {
   param($G, $BrushGreen, $PenGreen, [string]$Mode)
   Draw-Text $G "ROBCO INDUSTRIES (TM)" $FontMono $BrushGreen $Margin 8 260 "Left"
   Draw-Text $G "12:34" $FontMono $BrushGreen ($W - $Margin - 100) 8 100 "Right"
-  $G.DrawLine($PenGreen, 0, 32, $W, 32)
+  $G.DrawLine($PenGreen, 34, 32, $W - 35, 32)
   Draw-Text $G $Mode $FontMono $BrushGreen 0 36 $W "Center"
 }
 
 function Draw-Footer {
   param($G, $BrushDim, $PenGrid, [string]$Left, [string]$Right)
-  $Y = $H - 24
-  $G.DrawLine($PenGrid, 0, $H - 32, $W, $H - 32)
-  Draw-Text $G $Left $FontSmall $BrushDim $Margin $Y 230 "Left"
-  Draw-Text $G $Right $FontSmall $BrushDim ($W - $Margin - 232) $Y 232 "Right"
+  $Y = $H - 25
+  $G.DrawLine($PenGrid, 34, $H - 34, $W - 35, $H - 34)
+  Draw-Text $G $Left $FontMono $BrushDim $Margin $Y 220 "Left"
+  Draw-Text $G $Right $FontMono $BrushDim ($W - $Margin - 222) $Y 222 "Right"
 }
 
 function Draw-Scanlines {
@@ -66,6 +66,19 @@ function New-RoundedPath {
   $P.AddArc(0, $Rh - $D - 1, $D, $D, 90, 90)
   $P.CloseFigure()
   return $P
+}
+
+# Beveled HUD frame mirroring frame() in the apps: cut corners trace the bezel.
+function Draw-Frame {
+  param($G, $Pen, [int]$X1, [int]$Y1, [int]$X2, [int]$Y2, [int]$C)
+  $G.DrawLine($Pen, $X1 + $C, $Y1, $X2 - $C, $Y1)
+  $G.DrawLine($Pen, $X2 - $C, $Y1, $X2, $Y1 + $C)
+  $G.DrawLine($Pen, $X2, $Y1 + $C, $X2, $Y2 - $C)
+  $G.DrawLine($Pen, $X2, $Y2 - $C, $X2 - $C, $Y2)
+  $G.DrawLine($Pen, $X2 - $C, $Y2, $X1 + $C, $Y2)
+  $G.DrawLine($Pen, $X1 + $C, $Y2, $X1, $Y2 - $C)
+  $G.DrawLine($Pen, $X1, $Y2 - $C, $X1, $Y1 + $C)
+  $G.DrawLine($Pen, $X1, $Y1 + $C, $X1 + $C, $Y1)
 }
 
 function Draw-Screen {
@@ -95,6 +108,7 @@ function Draw-Screen {
   $G.SetClip($Bezel)
 
   Draw-Scanlines $G $PenGrid
+  Draw-Frame $G $PenDim 22 6 ($W - 23) ($H - 8) 12
   Draw-Header $G $BrushGreen $PenGreen $Mode
   & $Body $G $BrushGreen $BrushDim $PenGreen $PenDim
   Draw-Footer $G $BrushDim $PenGrid $LeftFooter $RightFooter
@@ -320,13 +334,13 @@ Draw-Screen "01-clock-date-config.png" "CLOCK" {
   Draw-Text $G "SECS ON" $FontSmall $BrushDim 336 142 120 "Left"
   Draw-Text $G "FMT 24H" $FontSmall $BrushDim 336 166 120 "Left"
   Draw-Text $G "ROBCO UI" $FontSmall $BrushDim 336 190 120 "Left"
-} "K1 LAYOUT/SEC" "K2 FORMAT/MODE"
+} "K1 LAYOUT  K2 FORMAT" "K1 PRESS LOCK"
 
 Draw-Screen "02-clock-time-only.png" "CLOCK" {
   param($G, $BrushGreen, $BrushDim, $PenGreen, $PenDim)
   Draw-Text $G "12:34" $FontHuge $BrushGreen 0 108 $W "Center"
   Draw-Text $G "VAULT-TEC LOCAL TIME" $FontMono $BrushDim 0 218 $W "Center"
-} "K1 LAYOUT/SEC" "K2 FORMAT/MODE"
+} "K1 LAYOUT  K2 FORMAT" "K1 PRESS LOCK"
 
 Draw-Screen "03-world-dst-relay.png" "WORLD" {
   param($G, $BrushGreen, $BrushDim, $PenGreen, $PenDim)
@@ -354,7 +368,7 @@ Draw-Screen "03-world-dst-relay.png" "WORLD" {
     Draw-Text $G $Rows[$I][1] $FontMono $Brush 352 ($Y - 10) 60 "Left"
     Draw-Text $G $Rows[$I][2] $FontMono $Brush 386 ($Y - 10) 80 "Right"
   }
-} "K1 RELAY +/-" "K2 RELAY +/-"
+} "K1/K2 TURN ZONES" "K1 PRESS LOCK"
 
 Draw-Screen "04-globe-orbital-relay.png" "GLOBE" {
   param($G, $BrushGreen, $BrushDim, $PenGreen, $PenDim)
@@ -414,7 +428,7 @@ Draw-Screen "04-globe-orbital-relay.png" "GLOBE" {
   Draw-Text $G "MERIDIAN 60W" $FontSmall $BrushDim 272 212 158 "Center"
   Draw-Text $G "BAND 10/39" $FontSmall $BrushDim 272 236 158 "Center"
   Draw-Text $G "$Phase $ElevStr" $FontSmall $PhaseBrush 272 260 158 "Center"
-} "K1 TZ BAND +/-" "K2 TZ BAND +/-"
+} "K1/K2 TURN BANDS" "K1 PRESS LOCK"
 
 Draw-Screen "05-analog-clock.png" "CHRONO" {
   param($G, $BrushGreen, $BrushDim, $PenGreen, $PenDim)
@@ -442,7 +456,7 @@ Draw-Screen "05-analog-clock.png" "CHRONO" {
   Draw-Text $G "JUNE 27" $FontSmall $BrushDim 274 184 172 "Center"
   Draw-Text $G "2026" $FontSmall $BrushDim 274 210 172 "Center"
   Draw-Text $G "FACE CHRONO" $FontSmall $BrushDim 274 234 172 "Center"
-} "K1 FACE/DATA" "K2 FACE"
+} "K1 FACE  K2 DATA" "K1 PRESS LOCK"
 
 Draw-Screen "06-stopwatch-running-lap.png" "STOPWATCH" {
   param($G, $BrushGreen, $BrushDim, $PenGreen, $PenDim)
@@ -455,27 +469,27 @@ Draw-Screen "06-stopwatch-running-lap.png" "STOPWATCH" {
   $G.FillRectangle($BrushGreen, $BarX + 2, $BarY + 2, [Math]::Round(($BarW - 4) * 0.38), $BarH - 3)
   Draw-Text $G "FIELD TEST RUNNING" $FontMono $BrushGreen 0 190 $W "Center"
   Draw-Text $G "LAP  03:15.82" $FontMono $BrushDim 0 224 $W "Center"
-} "K1 START/LAP" "K2 RESET"
+} "K1 START / LAP" "K2 RESET"
 
 Draw-Screen "07-countdown-running.png" "COUNTDOWN" {
   param($G, $BrushGreen, $BrushDim, $PenGreen, $PenDim)
   Draw-Text $G "03:28" $FontHuge $BrushGreen 0 92 $W "Center"
   Draw-Text $G "RADSAFE COUNTDOWN ACTIVE" $FontMono $BrushGreen 0 196 $W "Center"
   Draw-Text $G "ADJUSTMENT: ONE MINUTE STEPS" $FontMono $BrushDim 0 230 $W "Center"
-} "K1 START/ADJ" "K2 RESET"
+} "K1 START / ADJUST" "K2 STEP / RESET"
 
 Draw-Screen "08-pomodoro-work.png" "POMODORO" {
   param($G, $BrushGreen, $BrushDim, $PenGreen, $PenDim)
   Draw-Text $G "25:00" $FontHuge $BrushGreen 0 88 $W "Center"
   Draw-Text $G "WORK RATION READY" $FontMono $BrushGreen 0 190 $W "Center"
   Draw-Text $G "CYCLES 0  WORK 25:00  BREAK 05:00" $FontMono $BrushDim 0 225 $W "Center"
-} "K1 START/ADJ" "K2 RESET"
+} "K1 START / ADJUST" "K2 STEP / RESET"
 
 Draw-Screen "09-pomodoro-break.png" "POMODORO" {
   param($G, $BrushGreen, $BrushDim, $PenGreen, $PenDim)
   Draw-Text $G "04:12" $FontHuge $BrushGreen 0 88 $W "Center"
   Draw-Text $G "RECOVERY ACTIVE" $FontMono $BrushGreen 0 190 $W "Center"
   Draw-Text $G "CYCLES 1  WORK 25:00  BREAK 05:00" $FontMono $BrushDim 0 225 $W "Center"
-} "K1 START/ADJ" "K2 RESET"
+} "K1 START / ADJUST" "K2 STEP / RESET"
 
 Write-Host "Rendered landscape Clock Suite previews to $OutDir"

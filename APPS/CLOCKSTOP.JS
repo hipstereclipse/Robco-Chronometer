@@ -94,21 +94,34 @@
     for (y = y0; y <= y1; y++) screen.drawLine(x0, y, x1, y);
   }
 
+  // Beveled HUD frame: the cut corners trace the device's rounded bezel so the
+  // border reads as a natural panel instead of a hard rectangle.
+  function frame(x1, y1, x2, y2, c) {
+    screen.drawLine(x1 + c, y1, x2 - c, y1);
+    screen.drawLine(x2 - c, y1, x2, y1 + c);
+    screen.drawLine(x2, y1 + c, x2, y2 - c);
+    screen.drawLine(x2, y2 - c, x2 - c, y2);
+    screen.drawLine(x2 - c, y2, x1 + c, y2);
+    screen.drawLine(x1 + c, y2, x1, y2 - c);
+    screen.drawLine(x1, y2 - c, x1, y1 + c);
+    screen.drawLine(x1, y1 + c, x1 + c, y1);
+  }
+
   function drawHeader() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.reset().clear();
     screen.setColor(1);
-    screen.drawRect(22, 6, w - 23, hgt - 8);
-    screen.drawLine(22, 34, w - 23, 34);
-    screen.drawLine(22, 58, w - 23, 58);
+    frame(22, 6, w - 23, hgt - 8, 12);
+    screen.drawLine(34, 34, w - 35, 34);
+    screen.drawLine(34, 58, w - 35, 58);
     screen.setColor(3);
     setMono();
-    drawFit("ROBCO INDUSTRIES (TM)", MARGIN, 8, 260, -1);
+    drawFit("ROBCO INDUSTRIES (TM)", MARGIN, 8, 240, -1);
     drawFit("FIELD TEST", w - MARGIN, 8, 130, 1);
     screen.setColor(1);
     setMono();
-    drawFit("TERMLINK TIMER", MARGIN, 36, 250, -1);
+    drawFit("TERMLINK TIMER", MARGIN, 36, 240, -1);
     drawFit("STOPWATCH", w - MARGIN, 36, 150, 1);
   }
 
@@ -116,10 +129,10 @@
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
-    screen.drawLine(22, hgt - 34, w - 23, hgt - 34);
-    setMono();
-    drawFit("K1 START/LAP", MARGIN, hgt - 24, 190, -1);
-    drawFit("K2 RESET", w - MARGIN, hgt - 24, 190, 1);
+    screen.drawLine(34, hgt - 34, w - 35, hgt - 34);
+    setVector(16);
+    drawFit("K1 START / LAP", MARGIN, hgt - 27, 200, -1);
+    drawFit("K2 RESET", w - MARGIN, hgt - 27, 200, 1);
   }
 
   function draw() {

@@ -82,21 +82,26 @@ are counted, and the timer auto-advances between phases with an audible cue.
 Each tool launches as its own Pip-Boy app. Knob 1 is the main control in each app; Knob 2 is
 kept as a secondary in-app action instead of a cross-suite mode dial:
 
-| App       | Knob 1 turn            | Knob 1 press        | Knob 2 action       |
-|-----------|------------------------|---------------------|---------------------|
-| Clock     | Change layout          | Toggle seconds      | Toggle 12/24h or layout |
-| World     | Scroll zones           | —                   | Scroll zones        |
-| Globe     | Scroll timezone bands  | —                   | Scroll timezone bands |
-| Analog    | Change face style      | Toggle date panel   | Change face style   |
-| Stopwatch | Lap (while running)    | Start / stop        | Reset               |
-| Countdown | Adjust time (±1 min)   | Start / stop        | Reset               |
-| Pomodoro  | Adjust phase (±1 min)  | Start / stop        | Reset               |
+| App       | Knob 1 turn            | Knob 1 press        | Knob 2                       |
+|-----------|------------------------|---------------------|------------------------------|
+| Clock     | Change layout          | **Lock / unlock**   | Cycle 12/24h + seconds       |
+| World     | Scroll zones           | **Lock / unlock**   | Scroll zones                 |
+| Globe     | Scroll timezone bands  | **Lock / unlock**   | Scroll timezone bands        |
+| Analog    | Change face style      | **Lock / unlock**   | Turn: face · Press: date panel |
+| Stopwatch | Lap (while running)    | Start / stop        | Reset                        |
+| Countdown | Adjust time            | Start / stop        | Turn: step · Press: reset    |
+| Pomodoro  | Adjust phase           | Start / stop        | Turn: step · Press: reset    |
 
 > In code the press is delivered as `dir === 0`; a turn is `dir = ±1`. The on-screen footer
 > always shows the active bindings (`K1 …` / `K2 …`).
 
-Display preferences for Clock and Analog are persisted to separate small settings files and
-restored on the next launch.
+**Lock the displayed face.** On the four clock faces (Clock, World, Globe, Analog) a press of
+Knob 1 locks the current view: while locked the knobs no longer change the layout, zone, band,
+or face, so a stray bump can't move it. The footer shows `LOCKED` and the lock — along with the
+selected layout/zone/band/face — is remembered across restarts. Press Knob 1 again to unlock.
+
+The Globe always reports your **home timezone** (the device's own clock) in the top-right corner;
+the knob only re-centers the relay panel in the middle on other UTC bands.
 
 ---
 

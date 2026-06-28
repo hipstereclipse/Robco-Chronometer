@@ -8,6 +8,7 @@
   var clockLayout = 1;
   var showSeconds = true;
   var hour24 = true;
+  var locked = false;
   var days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
   var layouts = ["TIME", "DATE", "FIELD", "VAULT"];
 
@@ -19,6 +20,19 @@
   function wrap(n, max) {
     n = n % max;
     return n < 0 ? n + max : n;
+  }
+
+  // Beveled HUD frame: the cut corners trace the device's rounded bezel so the
+  // border reads as a natural panel instead of a hard rectangle.
+  function frame(x1, y1, x2, y2, c) {
+    screen.drawLine(x1 + c, y1, x2 - c, y1);
+    screen.drawLine(x2 - c, y1, x2, y1 + c);
+    screen.drawLine(x2, y1 + c, x2, y2 - c);
+    screen.drawLine(x2, y2 - c, x2 - c, y2);
+    screen.drawLine(x2 - c, y2, x1 + c, y2);
+    screen.drawLine(x1 + c, y2, x1, y2 - c);
+    screen.drawLine(x1, y2 - c, x1, y1 + c);
+    screen.drawLine(x1, y1 + c, x1 + c, y1);
   }
 
   function setMono() {
@@ -105,6 +119,7 @@
         showSeconds = p[1] !== "0";
         hour24 = p[2] !== "0";
       }
+      if (p.length >= 4) locked = p[3] !== "0";
     } catch (e) {
     }
   }
@@ -112,7 +127,7 @@
   function saveSettings() {
     if (!dirty) return;
     try {
-      require("fs").writeFileSync("USER/ROBCLOCK.SET", [clockLayout, showSeconds ? 1 : 0, hour24 ? 1 : 0].join(","));
+      require("fs").writeFileSync("USER/ROBCLOCK.SET", [clockLayout, showSeconds ? 1 : 0, hour24 ? 1 : 0, locked ? 1 : 0].join(","));
     } catch (e) {
     }
   }
@@ -122,16 +137,16 @@
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.reset().clear();
     screen.setColor(1);
-    screen.drawRect(22, 6, w - 23, hgt - 8);
-    screen.drawLine(22, 34, w - 23, 34);
-    screen.drawLine(22, 58, w - 23, 58);
+    frame(22, 6, w - 23, hgt - 8, 12);
+    screen.drawLine(34, 34, w - 35, 34);
+    screen.drawLine(34, 58, w - 35, 58);
     screen.setColor(3);
     setMono();
-    drawFit("ROBCO INDUSTRIES (TM)", MARGIN, 8, 260, -1);
+    drawFit("ROBCO INDUSTRIES (TM)", MARGIN, 8, 240, -1);
     drawFit(formatTime(d, false), w - MARGIN, 8, 120, 1);
     screen.setColor(1);
     setMono();
-    drawFit("TERMLINK CHRONOMETER", MARGIN, 36, 250, -1);
+    drawFit("TERMLINK CHRONOMETER", MARGIN, 36, 240, -1);
     drawFit("MODE " + layouts[clockLayout], w - MARGIN, 36, 150, 1);
   }
 
@@ -139,10 +154,12 @@
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
-    screen.drawLine(22, hgt - 34, w - 23, hgt - 34);
-    setMono();
-    drawFit("K1 LAYOUT/SEC", MARGIN, hgt - 24, 190, -1);
-    drawFit("K2 FORMAT/MODE", w - MARGIN, hgt - 24, 190, 1);
+    screen.drawLine(34, hgt - 34, w - 35, hgt - 34);
+    setVector(16);
+    screen.setColor(1);
+    drawFit("K1 LAYOUT  K2 FORMAT", MARGIN, hgt - 27, 218, -1);
+    screen.setColor(locked ? 3 : 1);
+    drawFit(locked ? "LOCKED  K1 UNLOCK" : "K1 PRESS LOCK", w - MARGIN, hgt - 27, 218, 1);
   }
 
   function drawRail() {
@@ -195,21 +212,37 @@
     }
   }
 
+  // Step through the four 12/24h x seconds combinations with a single control.
+  function cycleDisplay() {
+    if (hour24 && showSeconds) { hour24 = true; showSeconds = false; }
+    else if (hour24 && !showSeconds) { hour24 = false; showSeconds = true; }
+    else if (!hour24 && showSeconds) { hour24 = false; showSeconds = false; }
+    else { hour24 = true; showSeconds = true; }
+  }
+
+  // Knob 1 press toggles the lock (frozen face); while locked the knobs cannot
+  // change the layout or format.
   function onKnob1(dir) {
     dir = dir | 0;
-    if (dir === 0) showSeconds = !showSeconds;
-    else clockLayout = wrap(clockLayout + dir, layouts.length);
+    if (dir === 0) {
+      locked = !locked;
+      dirty = true;
+      sound("OK");
+      safeDraw();
+      return;
+    }
+    if (locked) return;
+    clockLayout = wrap(clockLayout + dir, layouts.length);
     dirty = true;
     sound("CLICK");
     safeDraw();
   }
 
   function onKnob2(dir) {
-    dir = dir | 0;
-    if (dir === 0) hour24 = !hour24;
-    else clockLayout = wrap(clockLayout + dir, layouts.length);
+    if (locked) return;
+    cycleDisplay();
     dirty = true;
-    sound("OK");
+    sound("CLICK");
     safeDraw();
   }
 

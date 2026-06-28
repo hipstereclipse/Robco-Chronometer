@@ -7,6 +7,8 @@
   var MS_PER_MIN = 60000;
   var MS_PER_DAY = 86400000;
   var worldIndex = 1;
+  var locked = false;
+  var dirty = false;
   var days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
   var zones = [
     ["UTC", 0, 0, "UTC", "", 0, 0],
@@ -31,10 +33,17 @@
     return n < 10 ? "0" + n : "" + n;
   }
 
-  function hex4(n) {
-    var s = (n & 65535).toString(16).toUpperCase();
-    while (s.length < 4) s = "0" + s;
-    return "0x" + s;
+  // Beveled HUD frame: the cut corners trace the device's rounded bezel so the
+  // border reads as a natural panel instead of a hard rectangle.
+  function frame(x1, y1, x2, y2, c) {
+    screen.drawLine(x1 + c, y1, x2 - c, y1);
+    screen.drawLine(x2 - c, y1, x2, y1 + c);
+    screen.drawLine(x2, y1 + c, x2, y2 - c);
+    screen.drawLine(x2, y2 - c, x2 - c, y2);
+    screen.drawLine(x2 - c, y2, x1 + c, y2);
+    screen.drawLine(x1 + c, y2, x1, y2 - c);
+    screen.drawLine(x1, y2 - c, x1, y1 + c);
+    screen.drawLine(x1, y1 + c, x1 + c, y1);
   }
 
   function wrap(n, max) {
@@ -82,6 +91,25 @@
   function sound(id) {
     try {
       if (typeof Pip !== "undefined" && Pip.audioBuiltin) Pip.audioBuiltin(id);
+    } catch (e) {
+    }
+  }
+
+  function loadSettings() {
+    try {
+      var p = String(require("fs").readFileSync("USER/ROBWORLD.SET")).split(",");
+      if (p.length >= 2) {
+        worldIndex = Math.max(0, Math.min(zones.length - 1, p[0] | 0));
+        locked = p[1] !== "0";
+      }
+    } catch (e) {
+    }
+  }
+
+  function saveSettings() {
+    if (!dirty) return;
+    try {
+      require("fs").writeFileSync("USER/ROBWORLD.SET", [worldIndex, locked ? 1 : 0].join(","));
     } catch (e) {
     }
   }
@@ -228,16 +256,16 @@
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.reset().clear();
     screen.setColor(1);
-    screen.drawRect(22, 6, w - 23, hgt - 8);
-    screen.drawLine(22, 34, w - 23, 34);
-    screen.drawLine(22, 58, w - 23, 58);
+    frame(22, 6, w - 23, hgt - 8, 12);
+    screen.drawLine(34, 34, w - 35, 34);
+    screen.drawLine(34, 58, w - 35, 58);
     screen.setColor(3);
     setMono();
-    drawFit("ROBCO INDUSTRIES (TM)", MARGIN, 8, 260, -1);
+    drawFit("ROBCO INDUSTRIES (TM)", MARGIN, 8, 240, -1);
     drawFit(formatTime(d, false), w - MARGIN, 8, 90, 1);
     screen.setColor(1);
     setMono();
-    drawFit("TERMLINK WORLD RELAY", MARGIN, 36, 250, -1);
+    drawFit("TERMLINK WORLD RELAY", MARGIN, 36, 240, -1);
     drawFit("NODE " + zones[worldIndex][0], w - MARGIN, 36, 150, 1);
   }
 
@@ -245,10 +273,12 @@
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
     screen.setColor(1);
-    screen.drawLine(22, hgt - 34, w - 23, hgt - 34);
-    setMono();
-    drawFit("K1 RELAY +/-", MARGIN, hgt - 24, 190, -1);
-    drawFit("K2 RELAY +/-", w - MARGIN, hgt - 24, 190, 1);
+    screen.drawLine(34, hgt - 34, w - 35, hgt - 34);
+    setVector(16);
+    screen.setColor(1);
+    drawFit("K1/K2 TURN ZONES", MARGIN, hgt - 27, 200, -1);
+    screen.setColor(locked ? 3 : 1);
+    drawFit(locked ? "LOCKED  K1 UNLOCK" : "K1 PRESS LOCK", w - MARGIN, hgt - 27, 224, 1);
   }
 
   function draw() {
@@ -277,17 +307,16 @@
     screen.drawLine(244, 100, w - 24, 100);
     setMono();
     drawFit("WASTELAND RELAY", 254, 80, w - 278, -1);
-    // Smaller vector rows keep the fixed memory-address/city/zone/time columns
-    // readable on the device's narrow screen.
+    // Three roomy columns -- city (left), zone (left @348), time (right edge) --
+    // with the decorative node address dropped so the zone and time never collide.
     for (i = 0; i < 5; i++) {
       var zi = (worldIndex + i) % zones.length;
       var zd = zoneDate(zi, utc);
       var y = 118 + (i * 30);
       screen.setColor(i === 0 ? 3 : 1);
-      setVector(14).setFontAlign(-1, 0).drawString(fitText(hex4(0xF4F0 + (zi * 44)), 56), 254, y);
-      setVector(14).setFontAlign(-1, 0).drawString(fitText(zones[zi][0], 66), 318, y);
-      setVector(14).setFontAlign(-1, 0).drawString(fitText(zoneAbbr(zi, utc), 46), 388, y);
-      setVector(14).setFontAlign(1, 0).drawString(formatTime(zd, true), w - 30, y);
+      setVector(14).setFontAlign(-1, 0).drawString(fitText(zones[zi][0], 90), 254, y);
+      setVector(14).setFontAlign(-1, 0).drawString(fitText(zoneAbbr(zi, utc), 44), 348, y);
+      setVector(14).setFontAlign(1, 0).drawString(formatTime(zd, true), w - 32, y);
     }
     drawFooter();
     if (screen.flip) screen.flip();
@@ -300,20 +329,37 @@
     }
   }
 
-  function rotate(dir) {
+  function turnZone(dir) {
+    worldIndex = wrap(worldIndex + dir, zones.length);
+    dirty = true;
+    sound("CLICK");
+    safeDraw();
+  }
+
+  // Knob press toggles the zone lock (frozen view); turning is ignored while
+  // locked so the relay can't be scrolled away by accident.
+  function onKnob1(dir) {
     dir = dir | 0;
-    if (dir !== 0) {
-      worldIndex = wrap(worldIndex + dir, zones.length);
-      sound("CLICK");
-      safeDraw();
-    } else {
+    if (dir === 0) {
+      locked = !locked;
+      dirty = true;
       sound("OK");
+      safeDraw();
+    } else if (!locked) {
+      turnZone(dir);
     }
   }
 
+  function onKnob2(dir) {
+    dir = dir | 0;
+    if (dir !== 0 && !locked) turnZone(dir);
+  }
+
+  loadSettings();
+
   if (typeof Pip !== "undefined") {
-    Pip.on("knob1", rotate);
-    Pip.on("knob2", rotate);
+    Pip.on("knob1", onKnob1);
+    Pip.on("knob2", onKnob2);
   }
   ticker = setInterval(safeDraw, 10000);
   safeDraw();
@@ -324,9 +370,10 @@
     fullscreen: true,
     remove: function() {
       if (ticker) clearInterval(ticker);
+      saveSettings();
       if (typeof Pip !== "undefined") {
-        Pip.removeListener("knob1", rotate);
-        Pip.removeListener("knob2", rotate);
+        Pip.removeListener("knob1", onKnob1);
+        Pip.removeListener("knob2", onKnob2);
       }
     }
   };
