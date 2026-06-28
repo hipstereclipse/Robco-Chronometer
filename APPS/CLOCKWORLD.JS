@@ -2,7 +2,6 @@
   var appId = "ROBWORLD";
   var screen = (typeof h !== "undefined") ? h : ((typeof g !== "undefined") ? g : undefined);
   var ticker;
-  var homeIndex = 1;
   var worldIndex = 1;
   var days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
   var zones = [
@@ -18,6 +17,10 @@
     ["ADELAIDE", 570, 3, "ACST", "ACDT", 139, -35],
     ["AUCKLAND", 720, 4, "NZST", "NZDT", 175, -37]
   ];
+
+  function nowMs() {
+    return (new Date()).getTime();
+  }
 
   function pad2(n) {
     n = Math.floor(Math.abs(n));
@@ -128,42 +131,33 @@
 
   function localOffsetText() {
     var d = new Date();
-    if (d.getTimezoneOffset && d.getTimezoneOffset() !== 0) return formatOffset(-d.getTimezoneOffset());
-    return "VAULT " + zoneAbbr(homeIndex, d.getTime());
-  }
-
-  function utcNow() {
-    var d = new Date();
-    var t = d.getTime();
-    if (d.getTimezoneOffset && d.getTimezoneOffset() !== 0) return t;
-    return t - (zoneOffset(homeIndex, t) * 60000);
+    return d.getTimezoneOffset ? formatOffset(-d.getTimezoneOffset()) : "LOCAL";
   }
 
   function drawHeader(d) {
     var w = screen.getWidth ? screen.getWidth() : 480;
     screen.reset().clear();
     screen.setColor(3);
-    setMono().setFontAlign(-1, -1).drawString("ROBCO WORLD CLOCK", 22, 10);
-    setMono().setFontAlign(1, -1).drawString(formatTime(d, false), w - 22, 10);
-    screen.drawLine(18, 38, w - 18, 38);
-    setMono().setFontAlign(0, -1).drawString("WORLD", w / 2, 42);
+    setMono().setFontAlign(-1, -1).drawString("ROBCO WORLD CLOCK", 8, 6);
+    setMono().setFontAlign(1, -1).drawString(formatTime(d, false), w - 8, 6);
+    screen.drawLine(0, 32, w, 32);
+    setMono().setFontAlign(0, -1).drawString("WORLD", w / 2, 36);
   }
 
   function drawFooter() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
-    var y = hgt - 32;
     screen.setColor(1);
-    screen.drawLine(18, y - 8, w - 18, y - 8);
-    setMono().setFontAlign(-1, -1).drawString("K1 ZONES", 22, y);
-    setMono().setFontAlign(1, -1).drawString("K2 ZONES", w - 22, y);
+    screen.drawLine(0, hgt - 29, w, hgt - 29);
+    setMono().setFontAlign(-1, -1).drawString("K1 ZONES", 8, hgt - 22);
+    setMono().setFontAlign(1, -1).drawString("K2 ZONES", w - 8, hgt - 22);
   }
 
   function draw() {
     if (!screen) return;
     var w = screen.getWidth ? screen.getWidth() : 480;
+    var utc = nowMs();
     var now = new Date();
-    var utc = utcNow();
     var i;
     drawHeader(now);
     screen.setColor(3);
@@ -174,7 +168,7 @@
     setMono().setFontAlign(0, -1).drawString(localOffsetText(), 118, 216);
     setMono().setFontAlign(0, -1).drawString(zones[worldIndex][0] + " " + zoneAbbr(worldIndex, utc), 118, 242);
     setMono().setFontAlign(0, -1).drawString(formatOffset(zoneOffset(worldIndex, utc)) + " " + (zoneIsDst(worldIndex, utc) ? "SUMMER" : "STANDARD"), 118, 266);
-    screen.drawLine(242, 66, 242, 274);
+    screen.drawLine(242, 66, 242, 282);
     setMono().setFontAlign(-1, -1).drawString("WASTELAND RELAY", 260, 66);
     for (i = 0; i < 5; i++) {
       var zi = (worldIndex + i) % zones.length;
@@ -183,7 +177,7 @@
       screen.setColor(i === 0 ? 3 : 1);
       setMono().setFontAlign(-1, 0).drawString(zones[zi][0], 260, y);
       setMono().setFontAlign(0, 0).drawString(zoneAbbr(zi, utc), 344, y);
-      setMono().setFontAlign(1, 0).drawString(formatTime(zd, true), w - 24, y);
+      setMono().setFontAlign(1, 0).drawString(formatTime(zd, true), w - 14, y);
     }
     drawFooter();
     if (screen.flip) screen.flip();

@@ -2,7 +2,6 @@
   var appId = "ROBGLOBE";
   var screen = (typeof h !== "undefined") ? h : ((typeof g !== "undefined") ? g : undefined);
   var ticker;
-  var homeIndex = 1;
   var worldIndex = 1;
   var monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
   var zones = [
@@ -19,6 +18,10 @@
     ["AUCKLAND", 720, 4, "NZST", "NZDT", 175, -37]
   ];
   var px = 0, py = 0, sunX = 0, sunY = 0, sunZ = 0;
+
+  function nowMs() {
+    return (new Date()).getTime();
+  }
 
   function pad2(n) {
     n = Math.floor(Math.abs(n));
@@ -63,13 +66,43 @@
     }
   }
 
+  function nthSunday(year, month, nth) {
+    var d = new Date(Date.UTC(year, month, 1));
+    return 1 + ((7 - d.getUTCDay()) % 7) + ((nth - 1) * 7);
+  }
+
+  function lastSunday(year, month) {
+    var d = new Date(Date.UTC(year, month + 1, 0));
+    return d.getUTCDate() - d.getUTCDay();
+  }
+
+  function transitionUtc(year, month, day, hour, offsetMinutes) {
+    return Date.UTC(year, month, day, hour, 0, 0) - (offsetMinutes * 60000);
+  }
+
   function zoneIsDst(i, utc) {
     var z = zones[i];
-    var m = (new Date(utc + (z[1] * 60000))).getUTCMonth();
-    if (z[2] === 1) return m > 2 && m < 10;
-    if (z[2] === 2) return m > 2 && m < 9;
-    if (z[2] === 3) return m < 3 || m > 9;
-    if (z[2] === 4) return m < 3 || m > 8;
+    var y;
+    if (z[2] === 1) {
+      y = (new Date(utc + (z[1] * 60000))).getUTCFullYear();
+      return utc >= transitionUtc(y, 2, nthSunday(y, 2, 2), 2, z[1]) &&
+        utc < transitionUtc(y, 10, nthSunday(y, 10, 1), 2, z[1] + 60);
+    }
+    if (z[2] === 2) {
+      y = (new Date(utc)).getUTCFullYear();
+      return utc >= Date.UTC(y, 2, lastSunday(y, 2), 1, 0, 0) &&
+        utc < Date.UTC(y, 9, lastSunday(y, 9), 1, 0, 0);
+    }
+    if (z[2] === 3) {
+      y = (new Date(utc + (z[1] * 60000))).getUTCFullYear();
+      return utc >= transitionUtc(y, 9, nthSunday(y, 9, 1), 2, z[1]) ||
+        utc < transitionUtc(y, 3, nthSunday(y, 3, 1), 3, z[1] + 60);
+    }
+    if (z[2] === 4) {
+      y = (new Date(utc + (z[1] * 60000))).getUTCFullYear();
+      return utc >= transitionUtc(y, 8, lastSunday(y, 8), 2, z[1]) ||
+        utc < transitionUtc(y, 3, nthSunday(y, 3, 1), 3, z[1] + 60);
+    }
     return false;
   }
 
@@ -83,13 +116,6 @@
 
   function zoneDate(i, utc) {
     return new Date(utc + (zoneOffset(i, utc) * 60000));
-  }
-
-  function utcNow() {
-    var d = new Date();
-    var t = d.getTime();
-    if (d.getTimezoneOffset && d.getTimezoneOffset() !== 0) return t;
-    return t - (zoneOffset(homeIndex, t) * 60000);
   }
 
   function formatTime(d) {
@@ -180,25 +206,24 @@
     var w = screen.getWidth ? screen.getWidth() : 480;
     screen.reset().clear();
     screen.setColor(3);
-    setMono().setFontAlign(-1, -1).drawString("ROBCO GLOBE", 22, 10);
-    setMono().setFontAlign(1, -1).drawString(formatTime(d), w - 22, 10);
-    screen.drawLine(18, 38, w - 18, 38);
-    setMono().setFontAlign(0, -1).drawString("GLOBE", w / 2, 42);
+    setMono().setFontAlign(-1, -1).drawString("ROBCO GLOBE", 8, 6);
+    setMono().setFontAlign(1, -1).drawString(formatTime(d), w - 8, 6);
+    screen.drawLine(0, 32, w, 32);
+    setMono().setFontAlign(0, -1).drawString("GLOBE", w / 2, 36);
   }
 
   function drawFooter() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
-    var y = hgt - 32;
     screen.setColor(1);
-    screen.drawLine(18, y - 8, w - 18, y - 8);
-    setMono().setFontAlign(-1, -1).drawString("K1 ZONES", 22, y);
-    setMono().setFontAlign(1, -1).drawString("K2 ZONES", w - 22, y);
+    screen.drawLine(0, hgt - 29, w, hgt - 29);
+    setMono().setFontAlign(-1, -1).drawString("K1 ZONES", 8, hgt - 22);
+    setMono().setFontAlign(1, -1).drawString("K2 ZONES", w - 8, hgt - 22);
   }
 
   function draw() {
     if (!screen) return;
-    var utc = utcNow();
+    var utc = nowMs();
     var z = zones[worldIndex];
     var zd = zoneDate(worldIndex, utc);
     var cx = 150, cy = 166, r = 104;
@@ -224,13 +249,13 @@
     if (sunZ > 0) screen.drawCircle(cx + (sunX * r), cy - (sunY * r), 3);
     setMono().setFontAlign(0, -1).drawString("ROBCO ORBITAL RELAY", 348, 72);
     screen.setColor(1);
-    screen.drawRect(272, 96, 430, 274);
+    screen.drawRect(272, 96, 430, 280);
     setMono().setFontAlign(0, -1).drawString(z[0] + " " + zoneAbbr(worldIndex, utc), 351, 112);
     setVector(30).setFontAlign(0, 0).drawString(formatTime(zd), 351, 154);
     setMono().setFontAlign(0, -1).drawString(monthNames[zd.getUTCMonth()] + " " + zd.getUTCDate(), 351, 188);
     setMono().setFontAlign(0, -1).drawString("FIX " + formatFix(z[6], z[5]), 351, 220);
     screen.setColor(elev >= 0 ? 3 : 1);
-    setMono().setFontAlign(0, -1).drawString(phase + " " + (elev >= 0 ? "+" : "-") + Math.round(Math.abs(elev)), 351, 248);
+    setMono().setFontAlign(0, -1).drawString(phase + " " + (elev >= 0 ? "+" : "-") + Math.round(Math.abs(elev)), 351, 254);
     drawFooter();
     if (screen.flip) screen.flip();
   }

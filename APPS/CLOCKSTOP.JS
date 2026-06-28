@@ -51,53 +51,37 @@
     var h = Math.floor(total / 3600);
     var m = Math.floor((total % 3600) / 60);
     var s = total % 60;
-    var c = Math.floor((ms % 1000) / 10);
-    return h > 0 ? pad2(h) + ":" + pad2(m) + ":" + pad2(s) + "." + pad2(c) : pad2(m) + ":" + pad2(s) + "." + pad2(c);
-  }
-
-  function drawActivity(ms) {
-    var i;
-    var x = 88;
-    var y = 184;
-    screen.setColor(1);
-    screen.drawRect(x - 8, y - 8, x + 308, y + 8);
-    for (i = 0; i < 10; i++) {
-      if (i <= Math.floor((ms % 1000) / 100)) screen.setColor(3);
-      else screen.setColor(1);
-      screen.drawLine(x + (i * 30), y, x + (i * 30) + 20, y);
-    }
+    var t = Math.floor((ms % 1000) / 100);
+    return h > 0 ? pad2(h) + ":" + pad2(m) + ":" + pad2(s) : pad2(m) + ":" + pad2(s) + "." + t;
   }
 
   function drawHeader() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     screen.reset().clear();
     screen.setColor(3);
-    setMono().setFontAlign(-1, -1).drawString("ROBCO STOPWATCH", 22, 10);
-    setMono().setFontAlign(1, -1).drawString("FIELD TEST", w - 22, 10);
-    screen.drawLine(18, 38, w - 18, 38);
-    setMono().setFontAlign(0, -1).drawString("STOPWATCH", w / 2, 42);
+    setMono().setFontAlign(-1, -1).drawString("ROBCO STOPWATCH", 8, 6);
+    setMono().setFontAlign(1, -1).drawString("FIELD TEST", w - 8, 6);
+    screen.drawLine(0, 32, w, 32);
+    setMono().setFontAlign(0, -1).drawString("STOPWATCH", w / 2, 36);
   }
 
   function drawFooter() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var h = screen.getHeight ? screen.getHeight() : 320;
-    var y = h - 32;
     screen.setColor(1);
-    screen.drawLine(18, y - 8, w - 18, y - 8);
-    setMono().setFontAlign(-1, -1).drawString("K1 START/LAP", 22, y);
-    setMono().setFontAlign(1, -1).drawString("K2 RESET", w - 22, y);
+    screen.drawLine(0, h - 29, w, h - 29);
+    setMono().setFontAlign(-1, -1).drawString("K1 START/LAP", 8, h - 22);
+    setMono().setFontAlign(1, -1).drawString("K2 RESET", w - 8, h - 22);
   }
 
   function draw() {
     if (!screen) return;
-    var ms = stopwatchMs();
     drawHeader();
     screen.setColor(3);
-    setVector(ms >= 3600000 ? 42 : 64).setFontAlign(0, 0).drawString(formatMs(ms), 238, 126);
-    drawActivity(ms);
-    setMono().setFontAlign(0, -1).drawString(running ? "FIELD TEST RUNNING" : "FIELD TEST STANDBY", 238, 204);
+    setVector(58).setFontAlign(0, 0).drawString(formatMs(stopwatchMs()), 238, 130);
+    setMono().setFontAlign(0, -1).drawString(running ? "FIELD TEST RUNNING" : "FIELD TEST STOPPED", 238, 190);
     screen.setColor(1);
-    setMono().setFontAlign(0, -1).drawString(lap >= 0 ? "LAP  " + formatMs(lap) : "LAP  --:--.--", 238, 232);
+    setMono().setFontAlign(0, -1).drawString(lap >= 0 ? "LAP  " + formatMs(lap) : "LAP  --:--.-", 238, 224);
     drawFooter();
     if (screen.flip) screen.flip();
   }
@@ -149,7 +133,7 @@
     Pip.on("knob1", onKnob1);
     Pip.on("knob2", onKnob2);
   }
-  ticker = setInterval(safeDraw, 16);
+  ticker = setInterval(safeDraw, 1000);
   safeDraw();
 
   return {

@@ -62,20 +62,19 @@
     var w = screen.getWidth ? screen.getWidth() : 480;
     screen.reset().clear();
     screen.setColor(3);
-    setMono().setFontAlign(-1, -1).drawString("ROBCO COUNTDOWN", 22, 10);
-    setMono().setFontAlign(1, -1).drawString("RADSAFE", w - 22, 10);
-    screen.drawLine(18, 38, w - 18, 38);
-    setMono().setFontAlign(0, -1).drawString("COUNTDOWN", w / 2, 42);
+    setMono().setFontAlign(-1, -1).drawString("ROBCO COUNTDOWN", 8, 6);
+    setMono().setFontAlign(1, -1).drawString("RADSAFE", w - 8, 6);
+    screen.drawLine(0, 32, w, 32);
+    setMono().setFontAlign(0, -1).drawString("COUNTDOWN", w / 2, 36);
   }
 
   function drawFooter() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var h = screen.getHeight ? screen.getHeight() : 320;
-    var y = h - 32;
     screen.setColor(1);
-    screen.drawLine(18, y - 8, w - 18, y - 8);
-    setMono().setFontAlign(-1, -1).drawString("K1 START/ADJ", 22, y);
-    setMono().setFontAlign(1, -1).drawString("K2 RESET", w - 22, y);
+    screen.drawLine(0, h - 29, w, h - 29);
+    setMono().setFontAlign(-1, -1).drawString("K1 START/ADJ", 8, h - 22);
+    setMono().setFontAlign(1, -1).drawString("K2 RESET", w - 8, h - 22);
   }
 
   function draw() {

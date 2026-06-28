@@ -1,7 +1,7 @@
 {
   "id": "robcount",
   "name": "RobCo Countdown",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "files": "APPINFO/COUNTDOWN.info,APPINFO/COUNTDOWN.IMG,APPS/CLOCKCOUNT.JS",
   "src": "APPS/CLOCKCOUNT.JS",
   "icon": "APPINFO/COUNTDOWN.IMG"

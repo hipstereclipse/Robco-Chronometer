@@ -31,33 +31,18 @@ function Draw-Text {
 
 function Draw-Header {
   param($G, $BrushGreen, $PenGreen, [string]$Mode)
-  $Title = switch ($Mode) {
-    "WORLD" { "ROBCO WORLD CLOCK"; break }
-    "GLOBE" { "ROBCO GLOBE"; break }
-    "ANALOG" { "ROBCO ANALOG"; break }
-    "STOPWATCH" { "ROBCO STOPWATCH"; break }
-    "COUNTDOWN" { "ROBCO COUNTDOWN"; break }
-    "POMODORO" { "ROBCO POMODORO"; break }
-    default { "ROBCO CLOCK" }
-  }
-  $Right = switch ($Mode) {
-    "STOPWATCH" { "FIELD TEST"; break }
-    "COUNTDOWN" { "RADSAFE"; break }
-    "POMODORO" { "WORK"; break }
-    default { "12:34" }
-  }
-  Draw-Text $G $Title $FontMono $BrushGreen 22 10 260 "Left"
-  Draw-Text $G $Right $FontMono $BrushGreen 318 10 140 "Right"
-  $G.DrawLine($PenGreen, 18, 38, $W - 18, 38)
-  Draw-Text $G $Mode $FontMono $BrushGreen 0 42 $W "Center"
+  Draw-Text $G "ROBCO CHRONOMETER" $FontMono $BrushGreen 8 6 250 "Left"
+  Draw-Text $G "12:34" $FontMono $BrushGreen 370 6 100 "Right"
+  $G.DrawLine($PenGreen, 0, 32, $W, 32)
+  Draw-Text $G $Mode $FontMono $BrushGreen 0 36 $W "Center"
 }
 
 function Draw-Footer {
   param($G, $BrushDim, $PenGrid, [string]$Left, [string]$Right)
-  $Y = $H - 32
-  $G.DrawLine($PenGrid, 18, $Y - 8, $W - 18, $Y - 8)
-  Draw-Text $G $Left $FontSmall $BrushDim 22 $Y 220 "Left"
-  Draw-Text $G $Right $FontSmall $BrushDim 238 $Y 220 "Right"
+  $Y = $H - 22
+  $G.DrawLine($PenGrid, 0, $Y - 7, $W, $Y - 7)
+  Draw-Text $G $Left $FontSmall $BrushDim 8 $Y 230 "Left"
+  Draw-Text $G $Right $FontSmall $BrushDim 240 $Y 232 "Right"
 }
 
 function Draw-Scanlines {
@@ -104,17 +89,6 @@ function Draw-AnalogHand {
   $X = $Cx + [Math]::Cos($Angle) * $Len
   $Y = $Cy + [Math]::Sin($Angle) * $Len
   $G.DrawLine($Pen, $Cx, $Cy, $X, $Y)
-}
-
-function Draw-AnalogNeedle {
-  param($G, $Pen, [float]$Cx, [float]$Cy, [float]$Angle, [float]$Len, [float]$Tail, [bool]$Wide)
-  $X = [Math]::Cos($Angle)
-  $Y = [Math]::Sin($Angle)
-  $G.DrawLine($Pen, [float]($Cx - ($X * $Tail)), [float]($Cy - ($Y * $Tail)), [float]($Cx + ($X * $Len)), [float]($Cy + ($Y * $Len)))
-  if ($Wide) {
-    $G.DrawLine($Pen, [float]($Cx - ($Y * 3)), [float]($Cy + ($X * 3)), [float]($Cx + ($X * ($Len - 10))), [float]($Cy + ($Y * ($Len - 10))))
-    $G.DrawLine($Pen, [float]($Cx + ($Y * 3)), [float]($Cy - ($X * 3)), [float]($Cx + ($X * ($Len - 10))), [float]($Cy + ($Y * ($Len - 10))))
-  }
 }
 
 # Low-poly coastline traces tuned for the 104 px globe. They retain the
@@ -275,13 +249,13 @@ Draw-Screen "01-clock-date-config.png" "CLOCK" {
   Draw-Text $G "SECS ON" $FontSmall $BrushDim 336 142 120 "Left"
   Draw-Text $G "FMT 24H" $FontSmall $BrushDim 336 166 120 "Left"
   Draw-Text $G "ROBCO UI" $FontSmall $BrushDim 336 190 120 "Left"
-} "K1 LAYOUT/SEC" "K2 12H/24H"
+} "K1 LAYOUT/SEC" "K2 12H/MODE"
 
 Draw-Screen "02-clock-time-only.png" "CLOCK" {
   param($G, $BrushGreen, $BrushDim, $PenGreen, $PenDim)
   Draw-Text $G "12:34" $FontHuge $BrushGreen 0 108 $W "Center"
   Draw-Text $G "VAULT-TEC LOCAL TIME" $FontMono $BrushDim 0 218 $W "Center"
-} "K1 LAYOUT/SEC" "K2 12H/24H"
+} "K1 LAYOUT/SEC" "K2 12H/MODE"
 
 Draw-Screen "03-world-dst-relay.png" "WORLD" {
   param($G, $BrushGreen, $BrushDim, $PenGreen, $PenDim)
@@ -291,7 +265,7 @@ Draw-Screen "03-world-dst-relay.png" "WORLD" {
   Draw-Text $G "UTC-04:00" $FontSmall $BrushDim 8 216 220 "Center"
   Draw-Text $G "NYC EDT" $FontSmall $BrushDim 8 242 220 "Center"
   Draw-Text $G "UTC-04:00 SUMMER" $FontSmall $BrushDim 8 266 220 "Center"
-  $G.DrawLine($PenDim, 242, 66, 242, 274)
+  $G.DrawLine($PenDim, 242, 66, 242, 282)
   Draw-Text $G "WASTELAND RELAY" $FontSmall $BrushDim 260 66 200 "Left"
   $Rows = @(
     @("NYC", "EDT", "12:34", ""),
@@ -305,9 +279,9 @@ Draw-Screen "03-world-dst-relay.png" "WORLD" {
     $Brush = if ($I -eq 0) { $BrushGreen } else { $BrushDim }
     Draw-Text $G $Rows[$I][0] $FontMono $Brush 260 ($Y - 11) 80 "Left"
     Draw-Text $G $Rows[$I][1] $FontMono $Brush 325 ($Y - 11) 70 "Center"
-    Draw-Text $G $Rows[$I][2] $FontMono $Brush 376 ($Y - 11) 80 "Right"
+    Draw-Text $G $Rows[$I][2] $FontMono $Brush 386 ($Y - 11) 80 "Right"
   }
-} "K1 ZONES" "K2 ZONES"
+} "K1 ZONES" "K2 MODE"
 
 Draw-Screen "04-globe-orbital-relay.png" "GLOBE" {
   param($G, $BrushGreen, $BrushDim, $PenGreen, $PenDim)
@@ -360,14 +334,14 @@ Draw-Screen "04-globe-orbital-relay.png" "GLOBE" {
   $PhaseBrush = if ($Elev -ge 0) { $BrushGreen } else { $BrushDim }
 
   Draw-Text $G "ROBCO ORBITAL RELAY" $FontSmall $BrushGreen 270 72 170 "Center"
-  $G.DrawRectangle($PenDim, 272, 96, 158, 178)
+  $G.DrawRectangle($PenDim, 272, 96, 158, 184)
   Draw-Text $G "NYC EDT" $FontMono $BrushDim 272 112 158 "Center"
   Draw-Text $G "12:34" $FontMid $BrushGreen 272 137 158 "Center"
   Draw-Text $G "SATURDAY" $FontSmall $BrushDim 272 188 158 "Center"
   Draw-Text $G "JUNE 27, 2026" $FontSmall $BrushDim 272 212 158 "Center"
   Draw-Text $G "FIX 41N 74W" $FontSmall $BrushDim 272 236 158 "Center"
-  Draw-Text $G "$Phase $ElevStr" $FontSmall $PhaseBrush 272 248 158 "Center"
-} "K1 ZONES" "K2 ZONES"
+  Draw-Text $G "$Phase $ElevStr" $FontSmall $PhaseBrush 272 260 158 "Center"
+} "K1 ZONES" "K2 MODE"
 
 Draw-Screen "05-analog-clock.png" "ANALOG" {
   param($G, $BrushGreen, $BrushDim, $PenGreen, $PenDim)
@@ -390,9 +364,9 @@ Draw-Screen "05-analog-clock.png" "ANALOG" {
   Draw-Text $G "3" $FontSmall $BrushDim ($Cx + $R - 42) ($Cy - 11) 36 "Center"
   Draw-Text $G "6" $FontSmall $BrushDim ($Cx - 18) ($Cy + $R - 42) 36 "Center"
   Draw-Text $G "9" $FontSmall $BrushDim ($Cx - $R + 8) ($Cy - 11) 36 "Center"
-  Draw-AnalogNeedle $G $PenGreen $Cx $Cy -0.36 50 10 $true
-  Draw-AnalogNeedle $G $PenGreen $Cx $Cy 0.52 76 14 $true
-  Draw-AnalogNeedle $G $PenDim $Cx $Cy 1.9 88 18 $false
+  Draw-AnalogHand $G $PenGreen $Cx $Cy -0.36 48
+  Draw-AnalogHand $G $PenGreen $Cx $Cy 0.52 74
+  Draw-AnalogHand $G $PenDim $Cx $Cy 1.9 86
   $G.DrawEllipse($PenGreen, $Cx - 4, $Cy - 4, 8, 8)
   $G.DrawRectangle($PenDim, 274, 76, 164, 174)
   $G.DrawLine($PenDim, 286, 90, 426, 90)
@@ -401,40 +375,35 @@ Draw-Screen "05-analog-clock.png" "ANALOG" {
   Draw-Text $G "CERTIFIED DATE" $FontSmall $BrushDim 274 122 164 "Center"
   Draw-Text $G "SATURDAY" $FontMono $BrushGreen 274 156 164 "Center"
   Draw-Text $G "JUNE 27, 2026" $FontSmall $BrushGreen 274 184 164 "Center"
-  Draw-Text $G "REGULATOR OK" $FontSmall $BrushDim 274 214 164 "Center"
-} "K1 FACE/DATA" "K2 FACE"
+  Draw-Text $G "FACE 1  SIGNAL OK" $FontSmall $BrushDim 274 214 164 "Center"
+} "K1 FACE/DATA" "K2 MODE"
 
 Draw-Screen "06-stopwatch-running-lap.png" "STOPWATCH" {
   param($G, $BrushGreen, $BrushDim, $PenGreen, $PenDim)
-  Draw-Text $G "07:42.30" $FontHuge $BrushGreen 0 82 $W "Center"
-  $G.DrawRectangle($PenDim, 80, 176, 308, 16)
-  for ($I = 0; $I -lt 10; $I++) {
-    $Pen = if ($I -le 3) { $PenGreen } else { $PenDim }
-    $G.DrawLine($Pen, 88 + ($I * 30), 184, 108 + ($I * 30), 184)
-  }
-  Draw-Text $G "FIELD TEST RUNNING" $FontMono $BrushGreen 0 204 $W "Center"
-  Draw-Text $G "LAP  03:15.80" $FontMono $BrushDim 0 232 $W "Center"
-} "K1 START/LAP" "K2 RESET"
+  Draw-Text $G "07:42.3" $FontHuge $BrushGreen 0 92 $W "Center"
+  Draw-Text $G "FIELD TEST RUNNING" $FontMono $BrushGreen 0 190 $W "Center"
+  Draw-Text $G "LAP  03:15.8" $FontMono $BrushDim 0 224 $W "Center"
+} "K1 START/LAP" "K2 RESET/MODE"
 
 Draw-Screen "07-countdown-running.png" "COUNTDOWN" {
   param($G, $BrushGreen, $BrushDim, $PenGreen, $PenDim)
   Draw-Text $G "03:28" $FontHuge $BrushGreen 0 92 $W "Center"
   Draw-Text $G "RADSAFE COUNTDOWN ACTIVE" $FontMono $BrushGreen 0 196 $W "Center"
   Draw-Text $G "ADJUSTMENT: ONE MINUTE STEPS" $FontMono $BrushDim 0 230 $W "Center"
-} "K1 START/ADJ" "K2 RESET"
+} "K1 START/ADJ" "K2 RESET/MODE"
 
 Draw-Screen "08-pomodoro-work.png" "POMODORO" {
   param($G, $BrushGreen, $BrushDim, $PenGreen, $PenDim)
   Draw-Text $G "25:00" $FontHuge $BrushGreen 0 88 $W "Center"
   Draw-Text $G "WORK RATION READY" $FontMono $BrushGreen 0 190 $W "Center"
   Draw-Text $G "CYCLES 0  WORK 25:00  BREAK 05:00" $FontMono $BrushDim 0 225 $W "Center"
-} "K1 START/ADJ" "K2 RESET"
+} "K1 START/ADJ" "K2 RESET/MODE"
 
 Draw-Screen "09-pomodoro-break.png" "POMODORO" {
   param($G, $BrushGreen, $BrushDim, $PenGreen, $PenDim)
   Draw-Text $G "04:12" $FontHuge $BrushGreen 0 88 $W "Center"
   Draw-Text $G "RECOVERY ACTIVE" $FontMono $BrushGreen 0 190 $W "Center"
   Draw-Text $G "CYCLES 1  WORK 25:00  BREAK 05:00" $FontMono $BrushDim 0 225 $W "Center"
-} "K1 START/ADJ" "K2 RESET"
+} "K1 START/ADJ" "K2 RESET/MODE"
 
 Write-Host "Rendered landscape Clock Suite previews to $OutDir"

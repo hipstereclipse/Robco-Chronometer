@@ -7,7 +7,6 @@
   var analogStyle = 0;
   var days = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
   var months = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
-  var faceNames = ["REGULATOR", "FIELD", "RELAY"];
 
   function pad2(n) {
     n = Math.floor(Math.abs(n));
@@ -62,84 +61,42 @@
     var w = screen.getWidth ? screen.getWidth() : 480;
     screen.reset().clear();
     screen.setColor(3);
-    setMono().setFontAlign(-1, -1).drawString("ROBCO ANALOG", 22, 10);
-    setMono().setFontAlign(1, -1).drawString(pad2(d.getHours()) + ":" + pad2(d.getMinutes()), w - 22, 10);
-    screen.drawLine(18, 38, w - 18, 38);
-    setMono().setFontAlign(0, -1).drawString("ANALOG", w / 2, 42);
+    setMono().setFontAlign(-1, -1).drawString("ROBCO ANALOG", 8, 6);
+    setMono().setFontAlign(1, -1).drawString(pad2(d.getHours()) + ":" + pad2(d.getMinutes()), w - 8, 6);
+    screen.drawLine(0, 32, w, 32);
+    setMono().setFontAlign(0, -1).drawString("ANALOG", w / 2, 36);
   }
 
   function drawFooter() {
     var w = screen.getWidth ? screen.getWidth() : 480;
     var hgt = screen.getHeight ? screen.getHeight() : 320;
-    var y = hgt - 32;
     screen.setColor(1);
-    screen.drawLine(18, y - 8, w - 18, y - 8);
-    setMono().setFontAlign(-1, -1).drawString("K1 FACE/DATA", 22, y);
-    setMono().setFontAlign(1, -1).drawString("K2 FACE", w - 22, y);
+    screen.drawLine(0, hgt - 29, w, hgt - 29);
+    setMono().setFontAlign(-1, -1).drawString("K1 FACE/DATA", 8, hgt - 22);
+    setMono().setFontAlign(1, -1).drawString("K2 FACE", w - 8, hgt - 22);
   }
 
   function drawHand(cx, cy, angle, len) {
     line(cx, cy, cx + Math.cos(angle) * len, cy + Math.sin(angle) * len);
   }
 
-  function drawNeedle(cx, cy, angle, len, tail, wide) {
-    var x = Math.cos(angle);
-    var y = Math.sin(angle);
-    line(cx - (x * tail), cy - (y * tail), cx + (x * len), cy + (y * len));
-    if (wide) {
-      line(cx - (y * 3), cy + (x * 3), cx + (x * (len - 10)), cy + (y * (len - 10)));
-      line(cx + (y * 3), cy - (x * 3), cx + (x * (len - 10)), cy + (y * (len - 10)));
-    }
-  }
-
-  function drawTick(cx, cy, a, inner, outer) {
-    line(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner, cx + Math.cos(a) * outer, cy + Math.sin(a) * outer);
-  }
-
-  function drawCardinals(cx, cy, r, style) {
-    screen.setColor(style === 1 ? 3 : 1);
-    if (style === 2) {
-      setMono().setFontAlign(0, 0).drawString("XII", cx, cy - r + 29);
-      setMono().setFontAlign(0, 0).drawString("III", cx + r - 31, cy);
-      setMono().setFontAlign(0, 0).drawString("VI", cx, cy + r - 29);
-      setMono().setFontAlign(0, 0).drawString("IX", cx - r + 31, cy);
-    } else {
-      setMono().setFontAlign(0, 0).drawString("12", cx, cy - r + 29);
-      setMono().setFontAlign(0, 0).drawString("3", cx + r - 31, cy);
-      setMono().setFontAlign(0, 0).drawString("6", cx, cy + r - 29);
-      setMono().setFontAlign(0, 0).drawString("9", cx - r + 31, cy);
-    }
-  }
-
   function drawFace(cx, cy, r) {
     var i;
-    screen.setColor(3);
+    screen.setColor(analogStyle === 1 ? 1 : 3);
     screen.drawCircle(cx, cy, r);
-    screen.drawCircle(cx, cy, r - (analogStyle === 1 ? 12 : 6));
-    if (analogStyle === 1) {
-      screen.setColor(1);
-      screen.drawCircle(cx, cy, r - 30);
-      line(cx - r + 18, cy, cx + r - 18, cy);
-      line(cx, cy - r + 18, cx, cy + r - 18);
-    } else if (analogStyle === 2) {
-      screen.setColor(1);
-      screen.drawCircle(cx, cy, r - 18);
-      screen.drawCircle(cx, cy, r - 42);
-      line(cx - 18, cy, cx + 18, cy);
-      line(cx, cy - 18, cx, cy + 18);
-    }
+    if (analogStyle !== 2) screen.drawCircle(cx, cy, r - 6);
     for (i = 0; i < 60; i++) {
       var a = (i / 60) * Math.PI * 2 - Math.PI / 2;
       var major = i % 5 === 0;
-      if (analogStyle === 1 && !major) continue;
-      var quarter = i % 15 === 0;
-      var r1 = r - (quarter ? 21 : (major ? 15 : 7));
-      var r2 = r - (analogStyle === 1 && quarter ? 1 : 3);
+      var r1 = r - (major ? 13 : 7);
       screen.setColor(major ? 3 : 1);
-      drawTick(cx, cy, a, r1, r2);
-      if (analogStyle === 2 && major) drawTick(cx, cy, a, r - 31, r - 25);
+      line(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1, cx + Math.cos(a) * (r - 2), cy + Math.sin(a) * (r - 2));
     }
-    drawCardinals(cx, cy, r, analogStyle);
+    screen.setColor(1);
+    setMono().setFontAlign(0, 0).drawString("12", cx, cy - r + 28);
+    setMono().setFontAlign(0, 0).drawString("3", cx + r - 30, cy);
+    setMono().setFontAlign(0, 0).drawString("6", cx, cy + r - 30);
+    setMono().setFontAlign(0, 0).drawString("9", cx - r + 30, cy);
   }
 
   function draw() {
@@ -152,10 +109,10 @@
     drawHeader(d);
     drawFace(cx, cy, r);
     screen.setColor(3);
-    drawNeedle(cx, cy, (((h + (m / 60)) / 12) * Math.PI * 2) - Math.PI / 2, 50, 10, true);
-    drawNeedle(cx, cy, (((m + (s / 60)) / 60) * Math.PI * 2) - Math.PI / 2, 76, 14, analogStyle !== 1);
+    drawHand(cx, cy, (((h + (m / 60)) / 12) * Math.PI * 2) - Math.PI / 2, 48);
+    drawHand(cx, cy, (((m + (s / 60)) / 60) * Math.PI * 2) - Math.PI / 2, 74);
     screen.setColor(1);
-    drawNeedle(cx, cy, ((s / 60) * Math.PI * 2) - Math.PI / 2, 88, 18, false);
+    drawHand(cx, cy, ((s / 60) * Math.PI * 2) - Math.PI / 2, 86);
     screen.drawCircle(cx, cy, 4);
     screen.drawRect(274, 76, 438, 250);
     line(286, 90, 426, 90);
@@ -167,10 +124,10 @@
       setMono().setFontAlign(0, -1).drawString(days[d.getDay()], 356, 156);
       setMono().setFontAlign(0, -1).drawString(months[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear(), 356, 184);
       screen.setColor(1);
-      setMono().setFontAlign(0, -1).drawString(faceNames[analogStyle] + " OK", 356, 214);
+      setMono().setFontAlign(0, -1).drawString("FACE " + (analogStyle + 1) + "  SIGNAL OK", 356, 214);
     } else {
       setMono().setFontAlign(0, -1).drawString("DATE REDACTED", 356, 166);
-      setMono().setFontAlign(0, -1).drawString(faceNames[analogStyle], 356, 198);
+      setMono().setFontAlign(0, -1).drawString("FACE " + (analogStyle + 1), 356, 198);
     }
     drawFooter();
     if (screen.flip) screen.flip();
