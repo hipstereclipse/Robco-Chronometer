@@ -191,17 +191,19 @@
     screen.drawRect(58, 78, 420, 256);
     screen.drawLine(58, 178, 420, 178);
     setMono();
-    drawFit("ADDR 0xBEEF // CYCLE CORE", 238, 86, 340, 0);
+    drawFit("ADDR 0xBEEF // CYCLE CORE", 238, 82, 340, 0);
     screen.setColor(3);
-    drawVectorFit(formatDuration(cur), 238, 124, 340, 64, 36, 0);
+    drawVectorFit(formatDuration(cur), 238, 134, 340, 46, 30, 0);
     drawProgress(94, 164, 386, 173, total ? cur / total : 0);
     screen.setColor(3);
     setMono();
-    drawFit(phaseName + (running ? " ACTIVE" : " READY"), 238, 190, 340, 0);
+    drawFit(phaseName + (running ? " ACTIVE" : " READY"), 238, 188, 340, 0);
+    // Two detail rows in a smaller vector font so all three lines clear the
+    // divider and stay inside the box -- Monofonto23 is too tall to stack three.
     screen.setColor(1);
-    setMono();
+    setVector(16);
     drawFit("CYCLES " + cycles + "  INCREMENT " + stepLabel(), 238, 216, 340, 0);
-    drawFit("WORK " + formatDuration(workSeconds) + "  BREAK " + formatDuration(breakSeconds), 238, 238, 340, 0);
+    drawFit("WORK " + formatDuration(workSeconds) + "  BREAK " + formatDuration(breakSeconds), 238, 236, 340, 0);
     drawFooter();
     if (screen.flip) screen.flip();
   }

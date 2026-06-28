@@ -173,9 +173,9 @@
     screen.drawRect(58, 78, 420, 256);
     screen.drawLine(58, 178, 420, 178);
     setMono();
-    drawFit("ADDR 0xCD00 // TIMER CORE", 238, 86, 340, 0);
+    drawFit("ADDR 0xCD00 // TIMER CORE", 238, 82, 340, 0);
     screen.setColor(3);
-    drawVectorFit(formatDuration(cur), 238, 126, 340, 64, 36, 0);
+    drawVectorFit(formatDuration(cur), 238, 134, 340, 46, 30, 0);
     drawProgress(94, 164, 386, 173, setSeconds ? cur / setSeconds : 0);
     screen.setColor(3);
     setMono();

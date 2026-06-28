@@ -299,14 +299,17 @@
     drawFit("LOCAL NODE 0x01", 134, 84, 184, 0);
     screen.setColor(3);
     setVector(36).setFontAlign(0, 0).drawString(formatTime(now, false), 134, 128);
-    setMono();
-    drawFit("RTC LINK ACTIVE", 134, 164, 184, 0);
+    // Five detail rows: a smaller vector font fits them all inside the box.
+    // Monofonto23 can only stack ~3 here, which is why the abbr/DST lines used
+    // to collide and spill past the panel border.
+    setVector(18);
+    drawFit("RTC LINK ACTIVE", 134, 156, 184, 0);
     screen.setColor(1);
-    setMono();
-    drawFit(formatDate(now), 134, 190, 184, 0);
-    drawFit(localOffsetText(), 134, 214, 184, 0);
-    drawFit(zoneAbbr(worldIndex, utc) + " " + zones[worldIndex][0], 134, 238, 184, 0);
-    drawFit(zoneIsDst(worldIndex, utc) ? "SUMMER TIME" : "STANDARD TIME", 134, 250, 184, 0);
+    setVector(18);
+    drawFit(formatDate(now), 134, 177, 184, 0);
+    drawFit(localOffsetText(), 134, 198, 184, 0);
+    drawFit(zoneAbbr(worldIndex, utc) + " " + zones[worldIndex][0], 134, 219, 184, 0);
+    drawFit(zoneIsDst(worldIndex, utc) ? "SUMMER TIME" : "STANDARD TIME", 134, 240, 184, 0);
     screen.drawRect(244, 78, w - 30, 260);
     screen.drawLine(244, 102, w - 30, 102);
     setMono();

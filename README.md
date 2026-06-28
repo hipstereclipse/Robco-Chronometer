@@ -58,7 +58,7 @@ styles (`CHRONO`, `FIELD`, `RANGER`), and a date/time panel that can be toggled 
 
 ### Stopwatch
 Start/stop with a lap capture, hundredths-of-a-second display, and a sub-second sweep bar. While
-running it redraws at about 20 Hz to keep the device event loop stable; while stopped it idles
+running it redraws at about 25 Hz to keep the device event loop stable; while stopped it idles
 until the next input.
 
 ![Stopwatch running with lap](PREVIEWS/06-stopwatch-running-lap.png)

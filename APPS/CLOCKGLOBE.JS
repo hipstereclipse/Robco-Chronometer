@@ -16,13 +16,7 @@
   var zoneNames = ["BAKER", "PAGO PAGO", "HONOLULU", "ANCHORAGE", "LOS ANGELES", "DENVER", "CHICAGO", "NEW YORK", "SANTIAGO", "BUENOS AIRES", "S. GEORGIA", "AZORES", "LONDON", "PARIS", "CAIRO", "MOSCOW", "DUBAI", "KARACHI", "DHAKA", "BANGKOK", "BEIJING", "TOKYO", "SYDNEY", "NOUMEA", "AUCKLAND", "APIA", "KIRITIMATI"];
   var px = 0, py = 0, sunX = 0, sunY = 0, sunZ = 0;
   var DEG = Math.PI / 180;
-  var termC = [];
-  var termS = [];
-  // Trig-cached coastline, packed into one flat buffer (see prepLand). landData
-  // holds [lon, cosLat, sinLat] per point with polylines concatenated; landLens
-  // records each polyline's point count.
-  var landData = null;
-  var landLens = null;
+  var landAt = 0;
 
   function nowMs() {
     return (new Date()).getTime();
@@ -44,25 +38,6 @@
 
   function line(x1, y1, x2, y2) {
     screen.drawLine(Math.round(x1), Math.round(y1), Math.round(x2), Math.round(y2));
-  }
-
-  // Beveled HUD frame: the cut corners trace the device's rounded bezel so the
-  // border reads as a natural panel instead of a hard rectangle.
-  function frame(x1, y1, x2, y2, c) {
-    screen.drawLine(x1 + c, y1, x2 - c, y1);
-    screen.drawLine(x2 - c, y1, x2, y1 + c);
-    screen.drawLine(x2, y1 + c, x2, y2 - c);
-    screen.drawLine(x2, y2 - c, x2 - c, y2);
-    screen.drawLine(x2 - c, y2, x1 + c, y2);
-    screen.drawLine(x1 + c, y2, x1, y2 - c);
-    screen.drawLine(x1, y2 - c, x1, y1 + c);
-    screen.drawLine(x1, y1 + c, x1 + c, y1);
-  }
-
-  function drawScanlines(w, hgt) {
-    var y;
-    screen.setColor(1);
-    for (y = 76; y < hgt - 44; y += 8) screen.drawLine(36, y, w - 37, y);
   }
 
   function setMono() {
@@ -261,10 +236,6 @@
     return formatCoord(lon, "E", "W");
   }
 
-  function formatFix(lat, lon) {
-    return formatCoord(lat, "N", "S") + " " + formatCoord(lon, "E", "W");
-  }
-
   // The globe is always equator-centered; projection can therefore skip the
   // general oblique math and cull by longitude before drawing.
   var ctrLon = 0;
@@ -283,14 +254,6 @@
     return true;
   }
 
-  function projectUnit(cx, cy, r, lon, cosLat, sinLat) {
-    var d = wrapLon(lon - ctrLon);
-    if (d < -90 || d > 90) return false;
-    px = cx + (r * cosLat * Math.sin(d * DEG));
-    py = cy - (r * sinLat);
-    return true;
-  }
-
   function drawMeridian(cx, cy, r, lon) {
     var lat, lx = 0, ly = 0, d = wrapLon(lon - ctrLon), sd;
     if (d < -90 || d > 90) return;
@@ -306,10 +269,8 @@
 
   function drawParallel(cx, cy, r, lat) {
     var lon, have = false, lx = 0, ly = 0;
-    var phi = lat * DEG;
-    var cl = Math.cos(phi), sl = Math.sin(phi);
     for (lon = ctrLon - 90; lon <= ctrLon + 90; lon += 15) {
-      if (projectUnit(cx, cy, r, lon, cl, sl)) {
+      if (project(cx, cy, r, lon, lat)) {
         if (have) line(lx, ly, px, py);
         lx = px; ly = py; have = true;
       }
@@ -318,68 +279,40 @@
 
   // Low-poly coastline traces (lon,lat pairs) tuned for the 104 px globe; these
   // mirror $LandShapes in tools/render-clock-suite-previews.ps1 -- keep in sync.
-  var land = [
-    [-168,72,-158,71,-151,67,-143,69,-136,59,-130,55,-127,50,-124,49,-124,43,-121,38,-117,33,-112,29,-106,23,-98,19,-91,18,-88,21,-84,22,-81,25,-80,29,-81,31,-79,33,-76,36,-75,39,-71,42,-67,45,-61,46,-57,50,-60,54,-67,56,-76,57,-82,62,-91,63,-96,68,-109,69,-121,71,-134,70,-145,72,-158,74,-168,72],
-    [-95,59,-88,58,-82,55,-78,51,-83,49,-90,52,-95,59],
-    [-53,83,-37,83,-23,79,-17,72,-23,66,-36,60,-49,59,-58,64,-63,71,-60,78,-53,83],
-    [-81,12,-75,11,-69,9,-63,3,-59,-4,-54,-9,-50,-18,-44,-23,-41,-33,-46,-39,-50,-50,-58,-55,-65,-54,-70,-49,-73,-42,-76,-32,-78,-20,-81,-7,-81,4,-81,12],
-    [-10,36,-9,43,-5,50,0,51,4,58,12,56,18,60,25,66,32,70,40,68,33,60,39,55,31,50,23,46,17,43,12,45,5,43,0,38,-6,36,-10,36],
-    [28,41,36,38,44,36,51,31,60,29,67,25,76,31,85,28,94,23,100,13,106,22,116,22,122,30,132,31,139,35,145,42,155,44,166,51,159,59,143,62,128,70,105,72,82,72,63,67,52,62,43,56,33,57,28,50,28,41],
-    [-17,35,-6,36,5,36,16,33,25,31,32,25,35,19,43,12,51,4,49,-5,43,-12,40,-22,33,-31,25,-34,18,-35,11,-31,5,-22,-3,-11,-10,2,-16,14,-17,25,-17,35],
-    [34,29,43,29,51,25,58,17,55,13,47,12,42,16,38,24,34,29],
-    [68,24,73,19,78,8,82,7,88,21,80,27,73,26,68,24],
-    [93,22,101,20,108,16,109,10,105,6,99,9,96,15,93,22],
-    [95,6,105,4,117,1,126,-3,132,-5,124,-8,112,-5,104,-6,97,0,95,6],
-    [132,-2,142,-4,153,-5,150,-10,139,-9,132,-2],
-    [112,-11,116,-21,114,-29,121,-35,134,-39,146,-43,153,-37,153,-28,147,-20,138,-15,128,-13,119,-14,112,-11],
-    [48,-12,51,-20,49,-26,44,-25,43,-18,48,-12],
-    [-8,58,-3,56,-2,51,-5,50,-8,52,-8,58],
-    [-25,66,-14,65,-14,63,-24,63,-25,66],
-    [130,34,135,32,141,36,145,43,140,45,133,40,130,34],
-    [166,-35,178,-38,177,-45,169,-47,166,-42,166,-35],
-    [145,-40,149,-43,146,-45,143,-43,145,-40],
-    [-180,-68,-160,-71,-135,-70,-110,-73,-80,-71,-55,-74,-25,-71,0,-70,32,-73,62,-70,95,-72,130,-69,160,-72,180,-68]
-  ];
+  var land = "-168,72,-158,71,-151,67,-143,69,-136,59,-130,55,-127,50,-124,49,-124,43,-121,38,-117,33,-112,29,-106,23,-98,19,-91,18,-88,21,-84,22,-81,25,-80,29,-81,31,-79,33,-76,36,-75,39,-71,42,-67,45,-61,46,-57,50,-60,54,-67,56,-76,57,-82,62,-91,63,-96,68,-109,69,-121,71,-134,70,-145,72,-158,74,-168,72;-95,59,-88,58,-82,55,-78,51,-83,49,-90,52,-95,59;-53,83,-37,83,-23,79,-17,72,-23,66,-36,60,-49,59,-58,64,-63,71,-60,78,-53,83;-81,12,-75,11,-69,9,-63,3,-59,-4,-54,-9,-50,-18,-44,-23,-41,-33,-46,-39,-50,-50,-58,-55,-65,-54,-70,-49,-73,-42,-76,-32,-78,-20,-81,-7,-81,4,-81,12;-10,36,-9,43,-5,50,0,51,4,58,12,56,18,60,25,66,32,70,40,68,33,60,39,55,31,50,23,46,17,43,12,45,5,43,0,38,-6,36,-10,36;28,41,36,38,44,36,51,31,60,29,67,25,76,31,85,28,94,23,100,13,106,22,116,22,122,30,132,31,139,35,145,42,155,44,166,51,159,59,143,62,128,70,105,72,82,72,63,67,52,62,43,56,33,57,28,50,28,41;-17,35,-6,36,5,36,16,33,25,31,32,25,35,19,43,12,51,4,49,-5,43,-12,40,-22,33,-31,25,-34,18,-35,11,-31,5,-22,-3,-11,-10,2,-16,14,-17,25,-17,35;34,29,43,29,51,25,58,17,55,13,47,12,42,16,38,24,34,29;68,24,73,19,78,8,82,7,88,21,80,27,73,26,68,24;93,22,101,20,108,16,109,10,105,6,99,9,96,15,93,22;95,6,105,4,117,1,126,-3,132,-5,124,-8,112,-5,104,-6,97,0,95,6;132,-2,142,-4,153,-5,150,-10,139,-9,132,-2;112,-11,116,-21,114,-29,121,-35,134,-39,146,-43,153,-37,153,-28,147,-20,138,-15,128,-13,119,-14,112,-11;48,-12,51,-20,49,-26,44,-25,43,-18,48,-12;-8,58,-3,56,-2,51,-5,50,-8,52,-8,58;-25,66,-14,65,-14,63,-24,63,-25,66;130,34,135,32,141,36,145,43,140,45,133,40,130,34;166,-35,178,-38,177,-45,169,-47,166,-42,166,-35;145,-40,149,-43,146,-45,143,-43,145,-40;-180,-68,-160,-71,-135,-70,-110,-73,-80,-71,-55,-74,-25,-71,0,-70,32,-73,62,-70,95,-72,130,-69,160,-72,180,-68;";
 
-  // Pack the nested land[] literal into a single Float32Array of trig-cached
-  // points, then release the literal. Keeping only the flat buffer (one
-  // ArrayBuffer) instead of a second nested array avoids the ~1200 extra JsVars
-  // that exhausted memory on-device. Each polyline is freed as it is packed to
-  // keep the transient peak low.
-  function prepLand() {
-    var s, i, pts, lat, total = 0, w = 0;
-    if (landData) return;
-    for (s = 0; s < land.length; s++) total += land[s].length >> 1;
-    landData = new Float32Array(total * 3);
-    landLens = [];
-    for (s = 0; s < land.length; s++) {
-      pts = land[s];
-      landLens.push(pts.length >> 1);
-      for (i = 0; i < pts.length; i += 2) {
-        lat = pts[i + 1] * DEG;
-        landData[w++] = pts[i];
-        landData[w++] = Math.cos(lat);
-        landData[w++] = Math.sin(lat);
-      }
-      land[s] = null;
+  function readLandNum() {
+    var c, sign = 1, n = 0;
+    if (land.charCodeAt(landAt) === 45) {
+      sign = -1;
+      landAt++;
     }
-    land = null;
+    while (landAt < land.length) {
+      c = land.charCodeAt(landAt);
+      if (c < 48 || c > 57) break;
+      n = (n * 10) + c - 48;
+      landAt++;
+    }
+    if (land.charCodeAt(landAt) === 44) landAt++;
+    return sign * n;
   }
 
   function drawCoast(cx, cy, r) {
-    var s, i, n, k = 0, have, lx = 0, ly = 0;
-    prepLand();
-    for (s = 0; s < landLens.length; s++) {
-      n = landLens[s];
-      have = false;
-      for (i = 0; i < n; i++) {
-        if (projectUnit(cx, cy, r, landData[k], landData[k + 1], landData[k + 2])) {
+    var lon, lat, have = false, lx = 0, ly = 0;
+    landAt = 0;
+    while (landAt < land.length) {
+      if (land.charCodeAt(landAt) === 59) {
+        have = false;
+        landAt++;
+      } else {
+        lon = readLandNum();
+        lat = readLandNum();
+        if (project(cx, cy, r, lon, lat)) {
           if (have) line(lx, ly, px, py);
           lx = px; ly = py; have = true;
         } else {
           have = false;
         }
-        k += 3;
       }
     }
   }
@@ -395,31 +328,21 @@
     sunZ = Math.cos(dec) * Math.cos(dl);
   }
 
-  function prepTerminator() {
-    var th;
-    if (termC.length) return;
-    for (th = 0; th <= 360; th += 10) {
-      termC.push(Math.cos(th * DEG));
-      termS.push(Math.sin(th * DEG));
-    }
-  }
-
   function drawTerminator(cx, cy, r) {
     var ax = -sunZ;
     var ay = 0;
     var az = sunX;
     var m = Math.sqrt((ax * ax) + (az * az));
-    var i, have = false, lx = 0, ly = 0;
+    var th, have = false, lx = 0, ly = 0;
     if (m < 1e-6) { ax = 1; az = 0; m = 1; }
     ax /= m; az /= m;
     var bx = sunY * az;
     var by = (sunZ * ax) - (sunX * az);
     var bz = -sunY * ax;
-    prepTerminator();
     screen.setColor(3);
-    for (i = 0; i < termC.length; i++) {
-      var c = termC[i];
-      var s = termS[i];
+    for (th = 0; th <= 360; th += 10) {
+      var c = Math.cos(th * DEG);
+      var s = Math.sin(th * DEG);
       var pz = (az * c) + (bz * s);
       if (pz < 0) {
         have = false;
@@ -499,24 +422,27 @@
     line(cx, cy - 9, cx, cy - 3);
     line(cx, cy + 3, cx, cy + 9);
     if (sunZ > 0) screen.drawCircle(cx + (sunX * r), cy - (sunY * r), 3);
-    setMono();
-    drawFit("TZ RELAY // 0xA0", 350, 76, 170, 0);
+    // Relay panel: eight rows won't fit in Monofonto23 (they used to overlap and
+    // spill past the border), so the detail rows use a smaller vector font. Only
+    // the band's local time stays large.
+    setVector(15);
+    drawFit("TZ RELAY // 0xA0", 351, 72, 156, 0);
     screen.setColor(1);
     screen.drawRect(272, 90, 430, 270);
-    screen.drawLine(272, 134, 430, 134);
-    setMono();
-    drawFit(label, 351, 96, 146, 0);
-    drawFit(place, 351, 116, 146, 0);
+    screen.drawLine(272, 140, 430, 140);
+    setVector(18);
+    drawFit(label, 351, 97, 150, 0);
+    drawFit(place, 351, 118, 150, 0);
     screen.setColor(3);
-    drawVectorFit(formatTime(zd), 351, 156, 146, 30, 22, 0);
+    drawVectorFit(formatTime(zd), 351, 160, 150, 30, 22, 0);
     screen.setColor(1);
-    setMono();
-    drawFit(monthNames[zd.month] + " " + zd.date, 351, 186, 146, 0);
-    drawFit("MERIDIAN " + formatLon(lon), 351, 210, 146, 0);
-    drawFit("BAND " + (zi + 1) + "/" + zones.length, 351, 234, 146, 0);
+    setVector(18);
+    drawFit(monthNames[zd.month] + " " + zd.date, 351, 184, 150, 0);
+    drawFit("MERIDIAN " + formatLon(lon), 351, 206, 150, 0);
+    drawFit("BAND " + (zi + 1) + "/" + zones.length, 351, 228, 150, 0);
     screen.setColor(elev >= 0 ? 3 : 1);
-    setMono();
-    drawFit(phase + " " + (elev >= 0 ? "+" : "-") + Math.round(Math.abs(elev)), 351, 252, 146, 0);
+    setVector(18);
+    drawFit(phase + " " + (elev >= 0 ? "+" : "-") + Math.round(Math.abs(elev)), 351, 250, 150, 0);
     drawFooter();
     if (screen.flip) screen.flip();
   }

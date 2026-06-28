@@ -8,7 +8,7 @@
   var lap = -1;
   // While running we redraw often enough for hundredths to visibly update, but
   // not so often that the Espruino event loop is flooded on-device.
-  var FAST_MS = 50;
+  var FAST_MS = 40;
   // Inset for content near the rounded-corner bezel (see header/footer).
   var MARGIN = 32;
 
@@ -149,10 +149,12 @@
     screen.drawRect(58, 78, w - 58, 256);
     screen.drawLine(58, 176, w - 58, 176);
     setMono();
-    drawFit("ADDR 0xF4F0 // ELAPSED", cx, 86, w - 136, 0);
-    // Main elapsed time.
+    drawFit("ADDR 0xF4F0 // ELAPSED", cx, 80, w - 136, 0);
+    // Main elapsed time. Capped well below the header label and sweep bar so the
+    // large readout can't ride up over them, and smaller glyphs render faster
+    // (vector fill cost scales with size) for a smoother running redraw.
     screen.setColor(3);
-    drawVectorFit(formatMs(ms), cx, 122, w - 136, 60, 34, 0);
+    drawVectorFit(formatMs(ms), cx, 130, w - 136, 44, 30, 0);
     // Sub-second sweep bar (fills 0..1.0 each second) — visualises the live refresh.
     var barX0 = cx - 150, barX1 = cx + 150, barY = 168;
     var frac = (ms % 1000) / 1000;

@@ -423,15 +423,19 @@ function Write-Icon {
   Draw-Frame $Label
   Draw-Symbol $Symbol
 
-  $Bytes = New-Object byte[] 516
+  $Bytes = New-Object byte[] 515
   $Bytes[0] = 64
   $Bytes[1] = 64
-  $Bytes[2] = 129
-  $Bytes[3] = 0
+  # Plain 1-bpp with NO flag bits in byte 2. The Pip-Boy launcher tints icons
+  # through a colour palette and reads byte 2 as the raw bpp, so a flagged value
+  # such as 129 (0x81 = bpp 1 | transparent) is taken as bpp 129 and throws
+  # "Can't have palette on >8 bit images" when it draws the tile. A flag-free
+  # bpp of 1 (3-byte header, pixel data from byte 3) is safe under every reader.
+  $Bytes[2] = 1
   for ($Y = 0; $Y -lt 64; $Y++) {
     for ($X = 0; $X -lt 64; $X++) {
       if ($script:Pix[($Y * 64) + $X]) {
-        $Index = 4 + ($Y * 8) + [int][Math]::Floor($X / 8)
+        $Index = 3 + ($Y * 8) + [int][Math]::Floor($X / 8)
         $Bytes[$Index] = $Bytes[$Index] -bor (128 -shr ($X % 8))
       }
     }
