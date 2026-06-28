@@ -15,7 +15,11 @@
   var DEG = Math.PI / 180;
   var termC = [];
   var termS = [];
-  var landFast = null;
+  // Trig-cached coastline, packed into one flat buffer (see prepLand). landData
+  // holds [lon, cosLat, sinLat] per point with polylines concatenated; landLens
+  // records each polyline's point count.
+  var landData = null;
+  var landLens = null;
 
   function nowMs() {
     return (new Date()).getTime();
@@ -290,34 +294,45 @@
     [-180,-68,-160,-71,-135,-70,-110,-73,-80,-71,-55,-74,-25,-71,0,-70,32,-73,62,-70,95,-72,130,-69,160,-72,180,-68]
   ];
 
+  // Pack the nested land[] literal into a single Float32Array of trig-cached
+  // points, then release the literal. Keeping only the flat buffer (one
+  // ArrayBuffer) instead of a second nested array avoids the ~1200 extra JsVars
+  // that exhausted memory on-device. Each polyline is freed as it is packed to
+  // keep the transient peak low.
   function prepLand() {
-    var s, i, pts, out, lat;
-    if (landFast) return;
-    landFast = [];
+    var s, i, pts, lat, total = 0, w = 0;
+    if (landData) return;
+    for (s = 0; s < land.length; s++) total += land[s].length >> 1;
+    landData = new Float32Array(total * 3);
+    landLens = [];
     for (s = 0; s < land.length; s++) {
       pts = land[s];
-      out = [];
+      landLens.push(pts.length >> 1);
       for (i = 0; i < pts.length; i += 2) {
         lat = pts[i + 1] * DEG;
-        out.push(pts[i], Math.cos(lat), Math.sin(lat));
+        landData[w++] = pts[i];
+        landData[w++] = Math.cos(lat);
+        landData[w++] = Math.sin(lat);
       }
-      landFast.push(out);
+      land[s] = null;
     }
+    land = null;
   }
 
   function drawCoast(cx, cy, r) {
-    var s, i, pts, have, lx = 0, ly = 0;
+    var s, i, n, k = 0, have, lx = 0, ly = 0;
     prepLand();
-    for (s = 0; s < landFast.length; s++) {
-      pts = landFast[s];
+    for (s = 0; s < landLens.length; s++) {
+      n = landLens[s];
       have = false;
-      for (i = 0; i < pts.length; i += 3) {
-        if (projectUnit(cx, cy, r, pts[i], pts[i + 1], pts[i + 2])) {
+      for (i = 0; i < n; i++) {
+        if (projectUnit(cx, cy, r, landData[k], landData[k + 1], landData[k + 2])) {
           if (have) line(lx, ly, px, py);
           lx = px; ly = py; have = true;
         } else {
           have = false;
         }
+        k += 3;
       }
     }
   }
