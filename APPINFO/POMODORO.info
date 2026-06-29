@@ -1,7 +1,7 @@
 {
   "id": "robpomo",
   "name": "RobCo Pomodoro",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "files": "APPINFO/POMODORO.info,APPINFO/POMODORO.IMG,APPS/CLOCKPOMO.JS",
   "src": "APPS/CLOCKPOMO.JS",
   "icon": "APPINFO/POMODORO.IMG"

@@ -1,7 +1,7 @@
 {
   "id": "robanalog",
   "name": "RobCo Analog",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "files": "APPINFO/ANALOG.info,APPINFO/ANALOG.IMG,APPS/CLOCKANALOG.JS",
   "src": "APPS/CLOCKANALOG.JS",
   "icon": "APPINFO/ANALOG.IMG"
